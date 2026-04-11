@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
+base_dir = os.path.abspath(os.path.dirname(__file__))
+template_dir = os.path.join(base_dir, 'templates')
 
 app = Flask(__name__)
 app.secret_key = "mi primera la app de  servicio de moto mas efecinete"
@@ -8,9 +10,9 @@ app.secret_key = "mi primera la app de  servicio de moto mas efecinete"
 ADMIN_PASSWORD = "admin1"  # cámbiala por la que quieras
 
 # ---------------------- BASE DE DATOS ----------------------
-
 def get_db():
-    conn = sqlite3.connect("database.db")
+    # Ruta absoluta para que PythonAnywhere siempre lo encuentre
+    conn = sqlite3.connect("/home/robert70/motos-app/database.db")
     conn.row_factory = sqlite3.Row  
     return conn
 
@@ -20,6 +22,8 @@ def crear_tablas():
 
     # TABLA USUARIOS
     cursor.execute("""
+    # TABLA USUARIOS (Añadimos 'activo' y 'fecha_pago' que faltaban)
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT,
@@ -27,7 +31,9 @@ def crear_tablas():
         password TEXT,
         tipo TEXT,
         lat REAL,
-        lng REAL
+        lng REAL,
+        activo INTEGER DEFAULT 1,
+        fecha_pago TEXT
     )
     """)
 
