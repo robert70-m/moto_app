@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Forzamos que el contenedor ocupe toda la pantalla disponible */
+    .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+    }
+    
+    .app-viewport {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 50px); /* Resta el header */
+        width: 100vw;
+    }
+
+    .controles-superiores {
+        background: white;
+        padding: 15px;
+        z-index: 1002;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .mapa-inferior {
+        flex-grow: 1;
+        position: relative;
+        width: 100%;
+    }
+
+    #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+    }
+</style>
+
+<div class="app-viewport">
+    <div class="controles-superiores">
+        <h3 style="text-align: center; margin: 0 0 10px 0; font-size: 18px;">Panel del Conductor 🏍️</h3>
+        
+        {% if viaje %}
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <p style="text-align: center; margin: 0; font-size: 14px;"><b>Viaje #{{ viaje.id }} en curso</b></p>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="actualizarEstado('en_camino', {{ viaje.id }})" style="flex: 1; padding: 12px; background:#f39c12; color: white;">En Camino</button>
+                    <button onclick="actualizarEstado('recogido', {{ viaje.id }})" style="flex: 1; padding: 12px; background:#9b59b6; color: white;">Recogido</button>
+                </div>
+                <button onclick="actualizarEstado('finalizado', {{ viaje.id }})" style="background:#e74c3c; color:white; padding: 12px;">FINALIZAR VIAJE</button>
+            </div>
+        {% else %}
+            <div style="text-align: center;">
+                <p style="margin-bottom: 5px;">No tienes viaje activo 🚫</p>
+                <a href="/viajes_disponibles"><button style="background: #3498db; color: white; width: 100%; padding: 12px;">VER VIAJES DISPONIBLES</button></a>
+            </div>
+        {% endif %}
+        
+        <p id="status-gps" style="font-size: 11px; color: #e67e22; text-align: center; margin: 10px 0 0 0; font-weight: bold;">Buscando señal GPS... 🛰️</p>
+    </div>
+
+    <div class="mapa-inferior">
+        <div id="map"></div>
+    </div>
+</div>
+
+<script>
+let map, markerMoto;
+let ultimaLat = null, ultimaLng = null;
+
+function initMap() {
+    map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    markerMoto = L.marker([0, 0], {
+        icon: L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/71/71422.png',
+            iconSize: [30, 30]
+        })
+    }).addTo(map);
+
+    {% if viaje %}
+    L.Routing.control({
+        waypoints: [
+            L.latLng({{ viaje.lat }}, {{ viaje.lng }}),
+            L.latLng({{ viaje.lat_destino }}, {{ viaje.lng_destino }})
+        ],
+        show: false,
+        addWaypoints: false,
+        createMarker: function() { return null; }
+    }).addTo(map);
+    {% endif %}
+
+    window.fixMap(map);
+}
+
+initMap();
+
+if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(function(pos) {
+        let lat = pos.coords.latitude;
+        let lng = pos.coords.longitude;
+        let nuevaPos = [lat, lng];
+
+        document.getElementById("status-gps").innerHTML = "Ubicación Real Actualizada ✅";
+        document.getElementById("status-gps").style.color = "#27ae60";
+
+        markerMoto.setLatLng(nuevaPos);
+        if (!ultimaLat) { map.setView(nuevaPos, 16); }
+
+        if (ultimaLat && Math.abs(lat - ultimaLat) < 0.00005) return;
+
+        ultimaLat = lat; ultimaLng = lng;
+
+        let formData = new FormData();
+        formData.append("lat", lat);
+        formData.append("lng", lng);
+        fetch("/actualizar_ubicacion", { method: "POST", body: formData });
+
+    }, function(error) {
+        document.getElementById("status-gps").innerHTML = "Error GPS ❌";
+        document.getElementById("status-gps").style.color = "red";
+    }, { enableHighAccuracy: true });
+}
+
+function actualizarEstado(estado, id) {
+    fetch(`/estado/${id}/${estado}`).then(() => location.reload());
+}
+</script>
+{% endblock %}

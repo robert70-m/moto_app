@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card">
+    <h2 style="text-align: center;">Viajes Disponibles 🏍️</h2>
+    <p style="font-size: 13px; color: #7f8c8d; text-align: center;">
+        Los viajes se actualizan automáticamente cada 10 segundos.
+    </p>
+
+    <div id="map" style="height:450px; border-radius: 10px; border: 2px solid #2c3e50;"></div>
+</div>
+
+<!-- 🔥 LISTA TEXTO (NUEVO PANEL) -->
+<div id="lista_viajes" style="
+    margin-top: 15px;
+    background: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+"></div>
+
+<script>
+// ===================== MAPA =====================
+let map = L.map('map').setView([16.75, -96.67], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+
+// centrar en conductor
+navigator.geolocation.getCurrentPosition(pos => {
+    map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+});
+
+// ===================== CONTROL =====================
+let rutasActivas = [];
+
+// ===================== CARGAR VIAJES =====================
+function cargarViajes() {
+
+    fetch("/api_viajes")
+    .then(res => res.json())
+    .then(data => {
+
+        // limpiar mapa
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.Marker) {
+                map.removeLayer(layer);
+            }
+        });
+
+        rutasActivas.forEach(r => map.removeControl(r));
+        rutasActivas = [];
+
+        // 🔥 LISTA TEXTO
+        let html = "";
+
+        data.viajes.forEach(v => {
+
+            if (v.lat && v.lng && v.lat_destino && v.lng_destino) {
+
+                // ===================== MAPA =====================
+                L.marker([v.lat, v.lng]).addTo(map)
+                .bindPopup(`
+                    <b>Viaje #${v.id}</b><br>
+                    📍 Origen: ${v.origen}<br>
+                    🎯 Destino: ${v.destino}<br><br>
+
+                    <a href="/aceptar_viaje/${v.id}" 
+                       style="background:#27ae60; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; display:inline-block;">
+                       Aceptar Viaje ✅
+                    </a>
+                `);
+
+                // ===================== RUTA =====================
+                let ruta = L.Routing.control({
+                    waypoints: [
+                        L.latLng(v.lat, v.lng),
+                        L.latLng(v.lat_destino, v.lng_destino)
+                    ],
+                    createMarker: function() { return null; },
+                    addWaypoints: false,
+                    routeWhileDragging: false,
+                    draggableWaypoints: false,
+                    fitSelectedRoutes: false,
+                    show: false
+                }).addTo(map);
+
+                rutasActivas.push(ruta);
+
+                // ===================== LISTA TEXTO =====================
+                html += `
+                <div style="border-bottom:1px solid #ddd; padding:8px;">
+                    <b>🚗 Viaje #${v.id}</b><br>
+                    📍 <b>Origen:</b> ${v.origen}<br>
+                    🎯 <b>Destino:</b> ${v.destino}<br>
+
+                    <a href="/aceptar_viaje/${v.id}" 
+                       style="margin-top:5px; background:#27ae60; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; display:inline-block;">
+                       Aceptar viaje
+                    </a>
+                </div>
+                `;
+            }
+        });
+
+        document.getElementById("lista_viajes").innerHTML = html;
+
+    });
+}
+
+// actualizar cada 10 segundos
+setInterval(cargarViajes, 10000);
+cargarViajes();
+
+</script>
+
+{% endblock %}

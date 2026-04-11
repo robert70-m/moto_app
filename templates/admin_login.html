@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card">
+    <h2>Acceso Administrador</h2>
+
+    {% if request.args.get('error') %}
+        <div class="alerta">Contraseña incorrecta</div>
+    {% endif %}
+
+    <form method="POST">
+        <input type="password" name="password" placeholder="Contraseña" required>
+        <button type="submit">Ingresar</button>
+    </form>
+</div>
+
+{% endblock %}

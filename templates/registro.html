@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card" style="text-align: center;">
+    <h2>Crear Cuenta 🏍️</h2>
+
+    <form method="POST">
+        <input name="nombre" placeholder="Nombre completo" required 
+               style="text-transform: capitalize; margin-bottom: 10px;">
+        
+        <input type="tel" name="telefono" placeholder="Teléfono (10 dígitos)" required 
+               style="margin-bottom: 10px;">
+        
+        <input name="password" type="password" placeholder="Crea una contraseña" required 
+               style="margin-bottom: 10px;">
+
+        <label style="display: block; margin-top: 10px; font-size: 14px; color: #7f8c8d;">
+            ¿Cómo usarás la app?
+        </label>
+        <select name="tipo" required style="margin-top: 5px;">
+            <option value="cliente">Soy Cliente (Pedir moto)</option>
+            <option value="conductor">Soy Conductor (Ofrecer viajes)</option>
+        </select>
+
+        <button type="submit" style="margin-top: 25px; background: #27ae60;">
+            Comenzar ahora 🚀
+        </button>
+    </form>
+
+    <div style="margin-top: 20px;">
+        <p style="font-size: 14px; color: #7f8c8d;">¿Ya tienes cuenta?</p>
+        <a href="/" style="font-weight: bold;">Iniciar sesión aquí</a>
+    </div>
+</div>
+
+{% endblock %}

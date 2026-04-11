@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Admin</title>
+<a href="/admin_logout" class="btn-logout">Cerrar sesión 🔒</a>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background: #333;
+            color: white;
+        }
+
+        .activo {
+            color: green;
+            font-weight: bold;
+        }
+
+        .bloqueado {
+            color: red;
+            font-weight: bold;
+        }
+
+        a {
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            color: white;
+        }
+
+        .btn-activar {
+            background: green;
+        }
+
+        .btn-bloquear {
+            background: red;
+        }
+
+        .btn-pago {
+            background: blue;
+        }
+
+    </style>
+<style>
+.btn-logout {
+    display: inline-block;
+    background: #2c3e50;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 8px;
+    text-decoration: none;
+    float: right;
+}
+</style>
+</head>
+<body>
+
+<h2>Panel de Conductores 🚗</h2>
+
+<table>
+    <tr>
+        <th>Nombre</th>
+        <th>Teléfono</th>
+        <th>Estado</th>
+        <th>Último pago</th>
+        
+        <th>Días restantes</th>
+      
+        <th>Acciones</th>
+    </tr>
+{% for c in conductores %}
+<tr>
+    <tr>
+    <td>{{ c.nombre }}</td>
+    <td>{{ c.telefono }}</td>
+
+    <td>{{ c.total_viajes }}</td>
+
+    <td>
+        {% if c.activo == 1 %}
+            <span class="activo">Activo</span>
+        {% else %}
+            <span class="bloqueado">Bloqueado</span>
+        {% endif %}
+    </td>
+
+    <td>
+        {{ c.fecha_pago if c.fecha_pago else "Sin registro" }}
+    </td>
+    <td>
+    {% if c.dias_restantes == "Vencido" %}
+        <span style="color:red; font-weight:bold;">Vencido</span>
+    {% elif c.dias_restantes == "Sin pago" %}
+        <span style="color:gray;">Sin pago</span>
+    {% else %}
+        <span style="color:green;">{{ c.dias_restantes }}</span>
+    {% endif %}
+</td>
+    <td>
+        {% if c.activo == 1 %}
+            <a class="btn-bloquear" 
+               href="{{ url_for('toggle_conductor', id=c.id) }}"
+               onclick="return confirm('¿Bloquear a {{ c.nombre }}?')">
+               Bloquear
+            </a>
+        {% else %}
+            <a class="btn-activar" 
+               href="{{ url_for('toggle_conductor', id=c.id) }}"
+               onclick="return confirm('¿Activar a {{ c.nombre }}?')">
+               Activar
+            </a>
+        {% endif %}
+
+        <a class="btn-pago" 
+           href="{{ url_for('pagar_conductor', id=c.id) }}"
+           onclick="return confirm('¿Registrar pago a {{ c.nombre }}?')">
+           Registrar pago
+        </a>
+    </td>
+</tr>
+{% endfor %}
+
+</table>
+</table>
+
+{% if conductores|length == 0 %}
+<p style="text-align:center;">No hay conductores registrados</p>
+{% endif %}
+</body>
+</html>

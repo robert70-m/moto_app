@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<style>
+    .card h2 { font-size: 26px; font-weight: bold; text-align: center; color: #2c3e50; }
+    
+    #lista_viajes {
+        margin-bottom: 20px;
+        background: #fff;
+        border-radius: 15px;
+        max-height: 400px; 
+        overflow-y: auto;
+        border: 3px solid #3498db;
+    }
+
+    .viaje-item { border-bottom: 2px solid #eee; padding: 20px; }
+
+    #detalle-direccion {
+        background: #fff;
+        border-left: 8px solid #007bff;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        display: none;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .acciones-viaje { display: flex; gap: 12px; margin-top: 15px; }
+
+    .btn-ruta {
+        flex: 1; background: #007bff !important; color: white !important;
+        padding: 20px; border-radius: 12px; font-weight: bold; font-size: 18px; border: none;
+    }
+
+    .btn-confirmar {
+        flex: 1; background: #28a745 !important; color: white !important;
+        padding: 20px; border-radius: 12px; text-align: center; font-weight: bold;
+        font-size: 18px; text-decoration: none;
+    }
+
+    #map { height: 400px; border-radius: 15px; border: 3px solid #2c3e50; margin-top: 15px; }
+</style>
+
+<div class="card">
+    <h2>Viajes Disponibles 📋</h2>
+    
+    <div id="lista_viajes">
+        <p style="text-align: center; padding: 40px; font-size: 18px;">Cargando viajes... 🔄</p>
+    </div>
+
+    <div id="detalle-direccion">
+        <b style="color: #007bff; font-size: 14px;">DIRECCIÓN DE ENTREGA:</b>
+        <p id="texto-destino" style="margin: 5px 0 0 0; font-size: 18px; font-weight: bold; color: #333;"></p>
+    </div>
+
+    <div id="map"></div>
+</div>
+
+<script>
+// Inicializar mapa de inmediato
+var map = L.map('map').setView([17.06, -96.72], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+var controlRuta = null;
+
+// FUNCIÓN DE RUTA SIN MENSAJES DE ERROR MOLESTOS
+function verRutaEnMapa(latO, lngO, latD, lngD, direccion) {
+    // 1. Mostrar texto de dirección
+    document.getElementById('detalle-direccion').style.display = 'block';
+    document.getElementById('texto-destino').innerText = direccion;
+
+    // 2. Limpiar ruta anterior
+    if (controlRuta) {
+        map.removeControl(controlRuta);
+    }
+
+    // 3. Crear línea AZUL (Directo, sin validaciones complicadas)
+    controlRuta = L.Routing.control({
+        waypoints: [
+            L.latLng(parseFloat(latO), parseFloat(lngO)),
+            L.latLng(parseFloat(latD), parseFloat(lngD))
+        ],
+        lineOptions: { 
+            styles: [{color: '#0056b3', opacity: 0.9, weight: 10}] 
+        },
+        addWaypoints: false,
+        draggableWaypoints: false,
+        show: false,
+        createMarker: function(i, wp) {
+            return L.marker(wp.latLng).bindPopup(i === 0 ? "Recoger 📍" : "Entregar 🏁");
+        }
+    }).addTo(map);
+
+    // Ajustar vista y bajar pantalla
+    map.fitBounds([[latO, lngO], [latD, lngD]], {padding: [40, 40]});
+    document.getElementById('detalle-direccion').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cargarViajes() {
+    fetch("/api_viajes")
+    .then(res => res.json())
+    .then(data => {
+        let html = "";
+        if (!data.viajes || data.viajes.length === 0) {
+            html = "<p style='text-align:center; padding: 40px;'>No hay viajes... 😴</p>";
+        } else {
+            data.viajes.forEach(v => {
+                // Pasamos las coordenadas y dirección entre comillas para evitar errores de sintaxis
+                html += `
+                <div class="viaje-item">
+                    <b style="font-size:20px;">📦 VIAJE #${v.id}</b>
+                    <p style="margin:10px 0; font-size:16px;">
+                        📍 <b>Origen:</b> ${v.origen}<br>
+                        🎯 <b>Destino:</b> ${v.destino}
+                    </p>
+                    <div class="acciones-viaje">
+                        <button type="button" class="btn-ruta" onclick="verRutaEnMapa('${v.lat}', '${v.lng}', '${v.lat_destino}', '${v.lng_destino}', '${v.destino}')">
+                            VER RUTA 🗺️
+                        </button>
+                        <a href="/aceptar_viaje/${v.id}" class="btn-confirmar">
+                            ACEPTAR ✅
+                        </a>
+                    </div>
+                </div>`;
+            });
+        }
+        document.getElementById("lista_viajes").innerHTML = html;
+    });
+}
+
+cargarViajes();
+setInterval(cargarViajes, 30000);
+setTimeout(() => { map.invalidateSize(); }, 1000);
+</script>
+
+{% endblock %}

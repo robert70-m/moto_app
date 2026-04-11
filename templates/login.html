@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card" style="text-align: center;">
+    <h2>Iniciar sesión 🏍️</h2>
+
+    <form method="POST" autocomplete="off">
+        <input type="tel" name="telefono" placeholder="Teléfono" autocomplete="off" required 
+               style="margin-bottom: 10px;">
+        
+        <input name="password" type="password" placeholder="Contraseña" autocomplete="new-password" required>
+
+        <button type="submit" style="margin-top: 25px;">Entrar a Moto App</button>
+    </form>
+
+    <div style="margin-top: 20px;">
+        <p style="font-size: 14px; color: #7f8c8d;">¿No tienes cuenta?</p>
+        <a href="/registro" style="font-weight: bold;">Crear una cuenta nueva</a>
+    </div>
+
+    {% if error %}
+        <div style="margin-top: 15px; padding: 10px; background: #fdeaea; border-radius: 5px;">
+            <p style="color: #e74c3c; margin: 0; font-size: 14px;">{{ error }}</p>
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

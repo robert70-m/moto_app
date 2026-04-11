@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div id="mensaje-alerta" style="display:none;" class="alerta">
+    <span id="texto-alerta"></span>
+</div>
+
+{% if request.args.get('cancelado') %}
+<script>
+    mostrarToast("Viaje cancelado ❌", "success");
+    setTimeout(() => { window.location.href = "/cliente"; }, 1200);
+</script>
+{% endif %}
+
+<div class="card">
+    <h2 style="font-size: 26px; text-align: center;">Pedir Moto 🏍️</h2>
+
+    {% if not viaje_id %}
+    <form action="/pedir_viaje" method="POST">
+        <div class="campo-grande">
+            <label>Tu ubicación (Origen):</label>
+            <input type="text" id="input_origen" name="origen" readonly value="Obteniendo GPS... 📡" class="input-rudo">
+        </div>
+        
+        <div class="campo-grande" style="margin-top: 15px;">
+            <label>Destino:</label>
+            <input type="text" id="input_destino" name="destino" placeholder="Escribe tu destino" class="input-rudo">
+        </div>
+
+        <input type="hidden" id="lat" name="lat">
+        <input type="hidden" id="lng" name="lng">
+        <input type="hidden" id="lat_destino" name="lat_destino">
+        <input type="hidden" id="lng_destino" name="lng_destino">
+
+        <button type="submit" id="btn_pedir" class="btn-pedir-rudo" {% if viaje_id %}disabled style="opacity:0.5;"{% endif %}>
+            Pedir viaje 🚀
+        </button>
+    </form>
+
+    {% if viaje_id %}
+    <a href="{{ url_for('cancelar_viaje', id=viaje_id) }}" 
+       class="btn-cancelar-rudo"
+       onclick="return confirm('¿Seguro que quieres cancelar el viaje?')">
+        Cancelar viaje ❌
+    </a>
+    {% endif %}
+
+    <div style="text-align:center; margin-top:10px;">
+        <p id="mensaje_estado" style="font-weight:bold; font-size: 18px; color: #2c3e50;"></p>
+    </div>
+
+    {% else %}
+    <p style="text-align:center; margin-top:10px; font-size: 18px; font-weight: bold;">
+        🚗 Tu viaje está en proceso...
+    </p>
+    {% endif %}
+</div>
+
+<div id="status_conductor" style="display:none; padding:20px; background:#d4edda; border-radius:12px; margin: 15px 0; border: 2px solid #155724; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <p style="margin:0; color: #155724; font-size: 20px;">✅ <b>¡Viaje Aceptado!</b></p>
+    <p style="margin:8px 0 0 0; font-size: 18px;">Conductor: <span id="nombre_en_pantalla" style="font-weight:bold; color: #000;"></span></p>
+    <p style="margin:5px 0 0 0; font-size: 16px;">Estado: <span id="texto_estado" style="text-transform: uppercase; font-weight: bold; background: #fff; padding: 2px 8px; border-radius: 5px;"></span></p>
+</div>
+
+<div class="card" style="padding: 10px;">
+    <p style="font-size: 16px; margin-bottom: 10px; font-weight: bold; text-align: center;">📍 Selecciona tu destino en el mapa:</p>
+    <div id="map" style="height: 450px; width: 100%; border-radius: 12px; border: 3px solid #2c3e50;"></div>
+</div>
+
+<style>
+/* NUEVOS ESTILOS PARA BOTONES GRANDES */
+.input-rudo {
+    width: 100%;
+    padding: 18px !important;
+    font-size: 18px !important;
+    border: 2px solid #bdc3c7 !important;
+    border-radius: 10px !important;
+    box-sizing: border-box;
+    background: #f9f9f9;
+}
+
+.campo-grande label {
+    font-size: 14px;
+    color: #555;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.btn-pedir-rudo {
+    width: 100%;
+    background: #27ae60;
+    color: white;
+    padding: 22px;
+    font-size: 22px;
+    font-weight: bold;
+    border: none;
+    border-radius: 15px;
+    margin-top: 20px;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+}
+
+.btn-cancelar-rudo {
+    display: block;
+    margin-top: 15px;
+    background: #e74c3c;
+    color: white;
+    padding: 18px;
+    border-radius: 12px;
+    text-decoration: none;
+    text-align: center;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.alerta {
+    background: #ff4d4d;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+</style>
+
+<script>
+// TODA TU LÓGICA DE JAVASCRIPT SIGUE AQUÍ IGUAL (NO SE CAMBIÓ NADA)
+document.addEventListener("DOMContentLoaded", function() {
+    let map = null;
+    let marcadorUsuario = null;
+    let marcadorDestino = null;
+    let primeraVez = true;
+
+    function initMap(lat, lng) {
+        if (map) return; 
+        map = L.map('map').setView([lat, lng], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        setTimeout(() => { map.invalidateSize(); }, 500);
+
+        map.on('click', function(e) {
+            let latD = e.latlng.lat;
+            let lngD = e.latlng.lng;
+            document.getElementById("lat_destino").value = latD;
+            document.getElementById("lng_destino").value = lngD;
+            document.getElementById("input_destino").value = "Destino marcado ✅";
+            if (marcadorDestino) {
+                marcadorDestino.setLatLng([latD, lngD]);
+            } else {
+                marcadorDestino = L.marker([latD, lngD]).addTo(map).bindPopup("Destino").openPopup();
+            }
+        });
+    }
+
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(function(pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            document.getElementById("lat").value = lat;
+            document.getElementById("lng").value = lng;
+            document.getElementById("input_origen").value = "Ubicación Detectada ✅";
+            if (!map) initMap(lat, lng);
+            if (marcadorUsuario) {
+                marcadorUsuario.setLatLng([lat, lng]);
+            } else {
+                marcadorUsuario = L.marker([lat, lng]).addTo(map).bindPopup("Estás aquí").openPopup();
+            }
+            if (primeraVez && map) {
+                map.setView([lat, lng], 16);
+                primeraVez = false;
+            }
+        }, function(err) {
+            if (!map) initMap(16.75, -96.67); 
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
+
+    function vigilarViaje() {
+        const idViaje = "{{ viaje_id }}";
+        if (!idViaje || idViaje === "None" || idViaje === "") {
+            document.getElementById("status_conductor").style.display = "none";
+            return; 
+        }
+        fetch(`/api_estado_viaje/${idViaje}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.estado === 'finalizado') {
+                    setTimeout(() => { window.location.href = "/cliente"; }, 1500);
+                } 
+                else if (['aceptado','en_camino','recogido'].includes(data.estado)) {
+                    document.getElementById("status_conductor").style.display = "block";
+                    document.getElementById("nombre_en_pantalla").innerText = data.conductor;
+                    document.getElementById("texto_estado").innerText = data.estado;
+                }
+            });
+    }
+    setInterval(vigilarViaje, 3000);
+});
+
+// Mantengo tus otros scripts de vigilancia y Nominatim exactamente iguales...
+function actualizarEstadoPantalla() {
+    const idViaje = "{{ viaje_id }}";
+    if (!idViaje || idViaje === "None") return;
+    fetch(`/api_estado_viaje/${idViaje}`)
+    .then(res => res.json())
+    .then(data => {
+        const msg = document.getElementById("mensaje_estado");
+        const btnCancelar = document.querySelector(".btn-cancelar-rudo");
+        if (data.estado === "pendiente") msg.innerText = "⏳ Esperando conductor...";
+        if (["aceptado", "en_camino", "recogido"].includes(data.estado)) {
+            msg.innerText = "🚗 Conductor en camino";
+            if (btnCancelar) btnCancelar.style.display = "none";
+        }
+    });
+}
+setInterval(actualizarEstadoPantalla, 3000);
+
+document.getElementById("input_destino").addEventListener("change", function() {
+    let direccion = this.value;
+    if (!direccion || direccion === "Destino marcado ✅") return;
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.length === 0) return;
+            let lugar = data[0];
+            document.getElementById("lat_destino").value = lugar.lat;
+            document.getElementById("lng_destino").value = lugar.lon;
+            if (typeof map !== "undefined") {
+                L.marker([lugar.lat, lugar.lon]).addTo(map).bindPopup("Destino: " + direccion).openPopup();
+                map.setView([lugar.lat, lugar.lon], 15);
+            }
+        });
+});
+</script>
+{% endblock %}
