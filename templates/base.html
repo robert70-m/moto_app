@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Moto App 🏍️</title>
-    
+
+    <link rel="manifest" href="/static/manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -28,9 +29,23 @@
             position: sticky;
             top: 0;
             z-index: 2000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        /* Contenedor estándar para que los textos se vean bien */
+        .header span { flex-grow: 1; margin-left: 40px; }
+
+        .btn-logout {
+            color: #ff4d4d;
+            text-decoration: none;
+            font-size: 14px;
+            background: rgba(255,255,255,0.1);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: normal;
+        }
+
         .container {
             padding: 15px;
             max-width: 800px;
@@ -45,7 +60,6 @@
             box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
         }
 
-        /* Tamaño de fuente corregido */
         h2, h3 { margin-top: 0; color: #2c3e50; }
         p, b, span { font-size: 16px; } 
 
@@ -63,9 +77,29 @@
     </style>
 </head>
 <body>
-    <div class="header">Moto App 🏍️</div>
+    <div class="header">
+        <span>Moto App 🏍️</span>
+        {% if session.get('usuario_id') %}
+            <a href="/logout" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Salir</a>
+        {% endif %}
+    </div>
+
     <div class="container">
         {% block content %}{% endblock %}
+        
+        {% if not session.get('usuario_id') %}
+            {# Si NO hay sesión iniciada (es un visitante), mostramos la invitación #}
+            <div style="text-align: center; margin-top: 20px; background: white; padding: 10px; border-radius: 10px;">
+                <p>¿Quieres ganar dinero? <br>
+                <a href="/registro_conductor" style="color: #27ae60; font-weight: bold; text-decoration: none;">Crea cuenta de conductor</a></p>
+            </div>
+        {% endif %}
     </div>
+
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js')
+    }
+    </script>
 </body>
 </html>

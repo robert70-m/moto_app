@@ -3,15 +3,14 @@
 {% block content %}
 
 <div class="card">
-    <h2 style="text-align: center;">Viajes Disponibles 🏍️</h2>
-    <p style="font-size: 13px; color: #7f8c8d; text-align: center;">
+    <h2 id="titulo_panel" style="text-align: center;">Viajes Disponibles 🏍️</h2>
+    <p id="info_actualizacion" style="font-size: 13px; color: #7f8c8d; text-align: center;">
         Los viajes se actualizan automáticamente cada 10 segundos.
     </p>
 
     <div id="map" style="height:450px; border-radius: 10px; border: 2px solid #2c3e50;"></div>
 </div>
 
-<!-- 🔥 LISTA TEXTO (NUEVO PANEL) -->
 <div id="lista_viajes" style="
     margin-top: 15px;
     background: #fff;
@@ -21,100 +20,103 @@
     overflow-y: auto;
 "></div>
 
-<script>
-// ===================== MAPA =====================
-let map = L.map('map').setView([16.75, -96.67], 13);
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
+<script>
+// ===================== CONFIGURACIÓN INICIAL =====================
+let map = L.map('map').setView([16.75, -96.67], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// centrar en conductor
-navigator.geolocation.getCurrentPosition(pos => {
-    map.setView([pos.coords.latitude, pos.coords.longitude], 14);
-});
-
-// ===================== CONTROL =====================
 let rutasActivas = [];
+let marcadores = [];
+
+// Función para limpiar el mapa sin borrar al conductor
+function limpiarMapa() {
+    marcadores.forEach(m => map.removeLayer(m));
+    rutasActivas.forEach(r => map.removeControl(r));
+    marcadores = [];
+    rutasActivas = [];
+}
 
 // ===================== CARGAR VIAJES =====================
 function cargarViajes() {
-
     fetch("/api_viajes")
     .then(res => res.json())
     .then(data => {
+        // Si el servidor nos dice que el conductor ya tiene un viaje aceptado
+        if (data.viaje_activo) {
+            mostrarViajeEnCurso(data.viaje_activo);
+        } else {
+            mostrarListaDisponibles(data.viajes);
+        }
+    });
+}
 
-        // limpiar mapa
-        map.eachLayer(function(layer) {
-            if (layer instanceof L.Marker) {
-                map.removeLayer(layer);
-            }
-        });
+function mostrarViajeEnCurso(v) {
+    // Cambiar textos de la interfaz
+    document.getElementById("titulo_panel").innerText = "Viaje en Curso 🏁";
+    document.getElementById("info_actualizacion").innerText = "Sigue la ruta hacia el destino.";
+    document.getElementById("lista_viajes").innerHTML = `
+        <div style="padding:15px; text-align:center;">
+            <b>Vas camino a:</b> ${v.destino}<br><br>
+            <a href="/finalizar_viaje/${v.id}" style="background:#e74c3c; color:white; padding:10px; border-radius:5px; text-decoration:none;">Finalizar Viaje</a>
+        </div>
+    `;
 
-        rutasActivas.forEach(r => map.removeControl(r));
-        rutasActivas = [];
+    // Solo dibujar si no hay rutas en el mapa (para no parpadear)
+    if (rutasActivas.length === 0) {
+        limpiarMapa();
+        let ruta = L.Routing.control({
+            waypoints: [
+                L.latLng(v.lat, v.lng),
+                L.latLng(v.lat_destino, v.lng_destino)
+            ],
+            lineOptions: { styles: [{ color: 'blue', opacity: 0.8, weight: 6 }] },
+            addWaypoints: false,
+            show: true // Mostrar instrucciones al conductor
+        }).addTo(map);
+        rutasActivas.push(ruta);
+    }
+}
 
-        // 🔥 LISTA TEXTO
-        let html = "";
-
-        data.viajes.forEach(v => {
-
-            if (v.lat && v.lng && v.lat_destino && v.lng_destino) {
-
-                // ===================== MAPA =====================
-                L.marker([v.lat, v.lng]).addTo(map)
+function mostrarListaDisponibles(viajes) {
+    limpiarMapa();
+    let html = "";
+    
+    viajes.forEach(v => {
+        if (v.lat && v.lng) {
+            let m = L.marker([v.lat, v.lng]).addTo(map)
                 .bindPopup(`
                     <b>Viaje #${v.id}</b><br>
                     📍 Origen: ${v.origen}<br>
                     🎯 Destino: ${v.destino}<br><br>
-
-                    <a href="/aceptar_viaje/${v.id}" 
-                       style="background:#27ae60; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; display:inline-block;">
-                       Aceptar Viaje ✅
-                    </a>
+                    <a href="/aceptar_viaje/${v.id}" style="background:#27ae60; color:white; padding:5px 10px; border-radius:3px; text-decoration:none;">Aceptar ✅</a>
                 `);
+            marcadores.push(m);
 
-                // ===================== RUTA =====================
-                let ruta = L.Routing.control({
-                    waypoints: [
-                        L.latLng(v.lat, v.lng),
-                        L.latLng(v.lat_destino, v.lng_destino)
-                    ],
-                    createMarker: function() { return null; },
-                    addWaypoints: false,
-                    routeWhileDragging: false,
-                    draggableWaypoints: false,
-                    fitSelectedRoutes: false,
-                    show: false
-                }).addTo(map);
-
-                rutasActivas.push(ruta);
-
-                // ===================== LISTA TEXTO =====================
-                html += `
+            html += `
                 <div style="border-bottom:1px solid #ddd; padding:8px;">
                     <b>🚗 Viaje #${v.id}</b><br>
                     📍 <b>Origen:</b> ${v.origen}<br>
                     🎯 <b>Destino:</b> ${v.destino}<br>
-
-                    <a href="/aceptar_viaje/${v.id}" 
-                       style="margin-top:5px; background:#27ae60; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; display:inline-block;">
-                       Aceptar viaje
-                    </a>
+                    <a href="/aceptar_viaje/${v.id}" style="margin-top:5px; background:#27ae60; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; display:inline-block;">Aceptar viaje</a>
                 </div>
-                `;
-            }
-        });
-
-        document.getElementById("lista_viajes").innerHTML = html;
-
+            `;
+        }
     });
+    document.getElementById("lista_viajes").innerHTML = html || "<p style='text-align:center;'>No hay viajes disponibles por ahora.</p>";
 }
 
-// actualizar cada 10 segundos
+// Iniciar
 setInterval(cargarViajes, 10000);
 cargarViajes();
 
+// Centrar en ubicación real una sola vez al inicio
+navigator.geolocation.getCurrentPosition(pos => {
+    map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+});
 </script>
 
 {% endblock %}

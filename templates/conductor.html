@@ -2,6 +2,7 @@
 
 {% block content %}
 <style>
+    <h1 style="color:red">CAMBIO DE PRUEBA 999</h1>
     /* Forzamos que el contenedor ocupe toda la pantalla disponible */
     .container {
         padding: 0 !important;
@@ -129,5 +130,8 @@ if (navigator.geolocation) {
 function actualizarEstado(estado, id) {
     fetch(`/estado/${id}/${estado}`).then(() => location.reload());
 }
+</script>
+<script>
+let viajeActivo = {{ viaje|tojson if viaje else "null" }};
 </script>
 {% endblock %}
