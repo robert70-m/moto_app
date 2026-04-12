@@ -201,38 +201,51 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // Mantengo tus otros scripts de vigilancia y Nominatim exactamente iguales...
+<script>
 function actualizarEstadoPantalla() {
     const idViaje = "{{ viaje_id }}";
     if (!idViaje || idViaje === "None") return;
+
     fetch(`/api_estado_viaje/${idViaje}`)
     .then(res => res.json())
     .then(data => {
         const msg = document.getElementById("mensaje_estado");
         const btnCancelar = document.querySelector(".btn-cancelar-rudo");
-        if (data.estado === "pendiente") msg.innerText = "⏳ Esperando conductor...";
+
+        console.log("Estado:", data.estado, "Conductor:", data.conductor);
+
+        if (data.estado === "pendiente") {
+            msg.innerText = "⏳ Esperando conductor...";
+        }
+
+        else if (data.estado === "aceptado") {
+            msg.innerText = `✅ ${data.conductor} aceptó tu viaje`;
+        }
+
+        else if (data.estado === "en_camino") {
+            msg.innerText = `🚗 ${data.conductor} va en camino`;
+        }
+
+        else if (data.estado === "recogido") {
+            msg.innerText = `📍 ${data.conductor} ya te recogió`;
+        }
+
+        else if (data.estado === "finalizado") {
+            msg.innerText = "🏁 Viaje finalizado";
+        }
+
+        else if (data.estado === "no_encontrado") {
+            msg.innerText = "❌ Viaje no encontrado";
+        }
+
+        // Ocultar cancelar cuando ya hay conductor
         if (["aceptado", "en_camino", "recogido"].includes(data.estado)) {
-            msg.innerText = "🚗 Conductor en camino";
             if (btnCancelar) btnCancelar.style.display = "none";
         }
     });
 }
-setInterval(actualizarEstadoPantalla, 3000);
 
-document.getElementById("input_destino").addEventListener("change", function() {
-    let direccion = this.value;
-    if (!direccion || direccion === "Destino marcado ✅") return;
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.length === 0) return;
-            let lugar = data[0];
-            document.getElementById("lat_destino").value = lugar.lat;
-            document.getElementById("lng_destino").value = lugar.lon;
-            if (typeof map !== "undefined") {
-                L.marker([lugar.lat, lugar.lon]).addTo(map).bindPopup("Destino: " + direccion).openPopup();
-                map.setView([lugar.lat, lugar.lon], 15);
-            }
-        });
-});
+setInterval(actualizarEstadoPantalla, 3000);
 </script>
+
 {% endblock %}
