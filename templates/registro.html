@@ -6,6 +6,10 @@
     <h2>Crear Cuenta 🏍️</h2>
 
     <form method="POST">
+
+        <!-- 🔥 FORZAR CLIENTE -->
+        <input type="hidden" name="tipo" value="cliente">
+
         <input name="nombre" placeholder="Nombre completo" required 
                style="text-transform: capitalize; margin-bottom: 10px;">
         
@@ -17,6 +21,7 @@
 
         <label style="display: block; margin-top: 10px; font-size: 14px; color: #7f8c8d;">
             ¿Cómo usarás la app?
+        </label>
        
         <button type="submit" style="margin-top: 25px; background: #27ae60;">
             Comenzar ahora 🚀

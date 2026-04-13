@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Panel Admin</title>
-<a href="/admin_logout" class="btn-logout">Cerrar sesión 🔒</a>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,6 +19,7 @@
             width: 100%;
             border-collapse: collapse;
             background: white;
+            margin-top: 20px;
         }
 
         th, td {
@@ -61,37 +62,55 @@
             background: blue;
         }
 
+        .btn-logout {
+            display: inline-block;
+            background: #2c3e50;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            float: right;
+            margin-bottom: 10px;
+        }
     </style>
-<style>
-.btn-logout {
-    display: inline-block;
-    background: #2c3e50;
-    color: white;
-    padding: 8px 15px;
-    border-radius: 8px;
-    text-decoration: none;
-    float: right;
-}
-</style>
 </head>
+
 <body>
+
+<a href="/admin_logout" class="btn-logout">Cerrar sesión 🔒</a>
 
 <h2>Panel de Conductores 🚗</h2>
 
+<!-- 🔥 SOLICITUDES -->
+{% if solicitudes %}
+    <h3>Solicitudes de conductor 🚗</h3>
+
+    {% for u in solicitudes %}
+        <div style="border:1px solid #ccc; padding:10px; margin:10px; background:white;">
+            <p><strong>{{ u.nombre }}</strong> - {{ u.telefono }}</p>
+
+            <a href="/aprobar/{{ u.id }}" 
+               style="background:green; color:white; padding:6px 10px; border-radius:6px;">
+               ✅ Aprobar
+            </a>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- 🔥 TABLA -->
 <table>
     <tr>
         <th>Nombre</th>
         <th>Teléfono</th>
+        <th>Viajes</th>
         <th>Estado</th>
         <th>Último pago</th>
-        
         <th>Días restantes</th>
-      
         <th>Acciones</th>
     </tr>
+
 {% for c in conductores %}
 <tr>
-    <tr>
     <td>{{ c.nombre }}</td>
     <td>{{ c.telefono }}</td>
 
@@ -108,15 +127,17 @@
     <td>
         {{ c.fecha_pago if c.fecha_pago else "Sin registro" }}
     </td>
+
     <td>
-    {% if c.dias_restantes == "Vencido" %}
-        <span style="color:red; font-weight:bold;">Vencido</span>
-    {% elif c.dias_restantes == "Sin pago" %}
-        <span style="color:gray;">Sin pago</span>
-    {% else %}
-        <span style="color:green;">{{ c.dias_restantes }}</span>
-    {% endif %}
-</td>
+        {% if c.dias_restantes == "Vencido" %}
+            <span style="color:red; font-weight:bold;">Vencido</span>
+        {% elif c.dias_restantes == "Sin pago" %}
+            <span style="color:gray;">Sin pago</span>
+        {% else %}
+            <span style="color:green;">{{ c.dias_restantes }}</span>
+        {% endif %}
+    </td>
+
     <td>
         {% if c.activo == 1 %}
             <a class="btn-bloquear" 
@@ -142,10 +163,10 @@
 {% endfor %}
 
 </table>
-</table>
 
 {% if conductores|length == 0 %}
 <p style="text-align:center;">No hay conductores registrados</p>
 {% endif %}
+
 </body>
 </html>

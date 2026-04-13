@@ -126,7 +126,7 @@ def cliente():
     estado = viaje["estado"] if viaje else None
 
     return render_template("cliente.html", viaje_id=viaje_id, estado=estado)
-
+# -----------------conductor --------------------------------------
 @app.route("/conductor")
 def conductor():
     if not session.get("user_id") or session.get("tipo") != "conductor":
@@ -149,11 +149,12 @@ def conductor():
 
     # 🔥 AJUSTE 1: Incluimos 'en_curso' en la búsqueda para que el mapa no se borre
     viaje = conn.execute("""
-        SELECT id, lat, lng, lat_destino, lng_destino, origen, destino 
-        FROM viajes 
-        WHERE conductor_id = ? AND estado IN ('aceptado', 'en_camino', 'recogido', 'en_curso')
-        ORDER BY id DESC LIMIT 1
-    """, (session["user_id"],)).fetchone()
+    SELECT id, lat, lng, lat_destino, lng_destino, origen, destino, estado
+    FROM viajes 
+    WHERE conductor_id = ?
+    AND estado IN ('aceptado','en_camino','recogido','en_curso')
+    ORDER BY id DESC LIMIT 1
+""", (session["user_id"],)).fetchone()   
 
     conn.close()
 
@@ -162,6 +163,26 @@ def conductor():
 
     return redirect("/viajes_disponibles")
 
+# -----------------solicitar ser conductor --------------------
+@app.route('/solicitar_conductor')
+def solicitar_conductor():
+    if not session.get("user_id"):
+        return redirect("/")
+
+    conn = get_db()
+
+    conn.execute("""
+        UPDATE usuarios 
+        SET solicitud_conductor=1 
+        WHERE id=?
+    """, (session["user_id"],))
+
+    conn.commit()
+    conn.close()
+
+    return "Solicitud enviada ✅"
+
+# --------------------viaje disponible  ------------------------
 @app.route("/viajes_disponibles")
 def viajes_disponibles():
     if session.get("tipo") != "conductor":
@@ -298,6 +319,43 @@ def admin_login():
         else:
             return redirect("/admin_login?error=1")
     return render_template("admin_login.html")
+# ------------------ruta admin -------------------------------------
+@app.route("/admin")
+def admin():
+    if not session.get("admin"):
+        return redirect("/admin_login")
+
+    conn = get_db()
+
+    conductores = conn.execute("""
+        SELECT * FROM usuarios WHERE tipo='conductor'
+    """).fetchall()
+
+    solicitudes = conn.execute("""
+        SELECT * FROM usuarios WHERE solicitud_conductor=1
+    """).fetchall()
+
+    conn.close()
+
+    return render_template("admin.html", conductores=conductores, solicitudes=solicitudes)
+@app.route("/aprobar/<int:id>")
+def aprobar(id):
+    if not session.get("admin"):
+        return redirect("/admin_login")
+
+    conn = get_db()
+
+    conn.execute("""
+        UPDATE usuarios 
+        SET tipo='conductor', activo=1, solicitud_conductor=0
+        WHERE id=?
+    """, (id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin")
+
 
 # [EL RESTO DE TUS RUTAS DE ADMIN SE MANTIENEN IGUAL]
 

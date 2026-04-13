@@ -23,7 +23,6 @@
             background: #2c3e50;
             color: white;
             padding: 15px;
-            text-align: center;
             font-size: 20px;
             font-weight: bold;
             position: sticky;
@@ -34,16 +33,19 @@
             align-items: center;
         }
 
-        .header span { flex-grow: 1; margin-left: 40px; }
+        .header span {
+            flex-grow: 1;
+            text-align: center;
+        }
 
         .btn-logout {
-            color: #ff4d4d;
+            color: white;
             text-decoration: none;
             font-size: 14px;
-            background: rgba(255,255,255,0.1);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-weight: normal;
+            background: #e74c3c;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
         }
 
         .container {
@@ -74,32 +76,96 @@
             font-weight: bold;
             cursor: pointer;
         }
+    .user-menu {
+    position: relative;
+}
+
+.user-btn {
+    background: #34495e;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 35px;
+    background: white;
+    min-width: 150px;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    overflow: hidden;
+    z-index: 999;
+}
+
+.dropdown a {
+    display: block;
+    padding: 10px;
+    color: #333;
+    text-decoration: none;
+}
+
+.dropdown a:hover {
+    background: #f1f1f1;
+}
     </style>
+
 </head>
+
 <body>
-    <div class="header">
-        <span>Moto App 🏍️</span>
-        {% if session.get('usuario_id') %}
-            <a href="/logout" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Salir</a>
-        {% endif %}
+
+   <div class="header">
+    <span>Moto App 🏍️</span>
+
+    {% if session.get('user_id') %}
+    <div class="user-menu">
+        <button onclick="toggleMenu()" class="user-btn">
+            👤 {{ session.get('user_nombre', 'Usuario') }}
+        </button>
+
+        <div id="dropdown" class="dropdown">
+            <a href="/logout">🔒 Cerrar sesión</a>
+        </div>
     </div>
+    {% endif %}
+</div>
 
     <div class="container">
         {% block content %}{% endblock %}
         
-        {% if not session.get('usuario_id') %}
-            {# Si NO hay sesión iniciada (es un visitante), mostramos la invitación #}
+        {% if not session.get('user_id') %}
             <div style="text-align: center; margin-top: 20px; background: white; padding: 10px; border-radius: 10px;">
                 <p>¿Quieres ganar dinero? <br>
-                <a href="/registro_conductor" style="color: #27ae60; font-weight: bold; text-decoration: none;">Crea cuenta de conductor</a></p>
+                <a href="/registro_conductor" style="color: #27ae60; font-weight: bold; text-decoration: none;">
+                    Crea cuenta de conductor
+                </a></p>
             </div>
         {% endif %}
     </div>
 
     <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/static/sw.js')
+        navigator.serviceWorker.register('/static/sw.js')
     }
     </script>
+<script>
+function toggleMenu() {
+    const menu = document.getElementById("dropdown");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+}
+
+// cerrar si das clic afuera
+window.onclick = function(e) {
+    if (!e.target.matches('.user-btn')) {
+        let dropdown = document.getElementById("dropdown");
+        if (dropdown) dropdown.style.display = "none";
+    }
+}
+</script>
 </body>
 </html>

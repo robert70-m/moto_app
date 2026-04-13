@@ -15,41 +15,30 @@
 
 <div class="card">
     <h2 style="font-size: 26px; text-align: center;">Pedir Moto 🏍️</h2>
-
     {% if not viaje_id %}
-    <form action="/pedir_viaje" method="POST">
-        <div class="campo-grande">
-            <label>Tu ubicación (Origen):</label>
-            <input type="text" id="input_origen" name="origen" readonly value="Obteniendo GPS... 📡" class="input-rudo">
-        </div>
-        
-        <div class="campo-grande" style="margin-top: 15px;">
-            <label>Destino:</label>
-            <input type="text" id="input_destino" name="destino" placeholder="Escribe tu destino" class="input-rudo">
-        </div>
+<form action="/pedir_viaje" method="POST">
+    ...
+    <button type="submit" class="btn-pedir-rudo">
+        Pedir viaje 🚀
+    </button>
+</form>
+{% endif %}
 
-        <input type="hidden" id="lat" name="lat">
-        <input type="hidden" id="lng" name="lng">
-        <input type="hidden" id="lat_destino" name="lat_destino">
-        <input type="hidden" id="lng_destino" name="lng_destino">
-
-        <button type="submit" id="btn_pedir" class="btn-pedir-rudo" {% if viaje_id %}disabled style="opacity:0.5;"{% endif %}>
-            Pedir viaje 🚀
-        </button>
-    </form>
-
-    {% if viaje_id %}
-    <a href="{{ url_for('cancelar_viaje', id=viaje_id) }}" 
-       class="btn-cancelar-rudo"
-       onclick="return confirm('¿Seguro que quieres cancelar el viaje?')">
-        Cancelar viaje ❌
-    </a>
-    {% endif %}
+{% if viaje_id %}
+<a href="{{ url_for('cancelar_viaje', id=viaje_id) }}" 
+   class="btn-cancelar-rudo"
+   onclick="return confirm('¿Seguro que quieres cancelar el viaje?')">
+    Cancelar viaje ❌
+</a>
+{% endif %}
+    
 
     <div style="text-align:center; margin-top:10px;">
         <p id="mensaje_estado" style="font-weight:bold; font-size: 18px; color: #2c3e50;"></p>
     </div>
-
+    <a href="/solicitar_conductor" class="btn">
+    🚗 Quiero ser conductor
+</a>
     {% else %}
     <p style="text-align:center; margin-top:10px; font-size: 18px; font-weight: bold;">
         🚗 Tu viaje está en proceso...

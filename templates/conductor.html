@@ -74,6 +74,50 @@ let ultimaLat = null, ultimaLng = null;
 
 function initMap() {
     map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+if (viaje) {
+
+    let origen = [viaje.lat, viaje.lng];
+    let destino = [viaje.lat_destino, viaje.lng_destino];
+
+    navigator.geolocation.getCurrentPosition(function(pos){
+
+        let conductor = [pos.coords.latitude, pos.coords.longitude];
+
+        // 📍 Marcadores
+        L.marker(conductor).addTo(map).bindPopup("🚗 Tú");
+        L.marker(origen).addTo(map).bindPopup("📍 Cliente");
+        L.marker(destino).addTo(map).bindPopup("🏁 Destino");
+
+        let puntos = [];
+
+        // 🔥 CAMBIO SEGÚN ESTADO
+        if (viaje.estado === "aceptado" || viaje.estado === "en_camino") {
+            // Ruta hacia cliente
+            puntos = [
+                L.latLng(conductor[0], conductor[1]),
+                L.latLng(origen[0], origen[1])
+            ];
+        }
+
+        else if (viaje.estado === "recogido" || viaje.estado === "en_curso") {
+            // Ruta hacia destino
+            puntos = [
+                L.latLng(origen[0], origen[1]),
+                L.latLng(destino[0], destino[1])
+            ];
+        }
+
+        // 🛣️ Dibujar ruta
+        L.Routing.control({
+            waypoints: puntos
+        }).addTo(map);
+
+        // 📌 Ajustar vista
+        map.fitBounds(puntos);
+
+    });
+}
+    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     markerMoto = L.marker([0, 0], {
@@ -130,8 +174,7 @@ if (navigator.geolocation) {
 function actualizarEstado(estado, id) {
     fetch(`/estado/${id}/${estado}`).then(() => location.reload());
 }
-</script>
 <script>
-let viajeActivo = {{ viaje|tojson if viaje else "null" }};
+let viaje = {{ viaje|tojson if viaje else "null" }};
 </script>
 {% endblock %}
