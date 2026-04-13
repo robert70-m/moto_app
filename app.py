@@ -127,6 +127,7 @@ def cliente():
 
     return render_template("cliente.html", viaje_id=viaje_id, estado=estado)
 # -----------------conductor --------------------------------------
+
 @app.route("/conductor")
 def conductor():
     if not session.get("user_id") or session.get("tipo") != "conductor":
@@ -135,6 +136,7 @@ def conductor():
     conn = get_db()
     user = conn.execute("SELECT * FROM usuarios WHERE id=?", (session["user_id"],)).fetchone()
 
+    # Verificación de pago y cuenta activa
     if user["fecha_pago"]:
         fecha_pago = datetime.strptime(user["fecha_pago"], "%Y-%m-%d")
         if datetime.now() > fecha_pago + timedelta(days=7):
@@ -147,21 +149,24 @@ def conductor():
         conn.close()
         return "Cuenta suspendida ❌"
 
-    # 🔥 AJUSTE 1: Incluimos 'en_curso' en la búsqueda para que el mapa no se borre
+    # BUSQUEDA DE VIAJE: Incluimos todos los estados activos para que el mapa persista
     viaje = conn.execute("""
-    SELECT id, lat, lng, lat_destino, lng_destino, origen, destino, estado
-    FROM viajes 
-    WHERE conductor_id = ?
-    AND estado IN ('aceptado','en_camino','recogido','en_curso')
-    ORDER BY id DESC LIMIT 1
-""", (session["user_id"],)).fetchone()   
+        SELECT id, lat, lng, lat_destino, lng_destino, origen, destino, estado
+        FROM viajes 
+        WHERE conductor_id = ?
+        AND estado IN ('aceptado', 'en_camino', 'recogido', 'en_curso')
+        ORDER BY id DESC LIMIT 1
+    """, (session["user_id"],)).fetchone()   
 
     conn.close()
 
+    # Si hay un viaje, cargamos la plantilla del conductor con los datos del viaje
     if viaje:
         return render_template("conductor.html", viaje=viaje, viaje_id=viaje['id'])
 
+    # Si no hay viaje activo, lo mandamos a buscar viajes nuevos
     return redirect("/viajes_disponibles")
+
 
 # -----------------solicitar ser conductor --------------------
 @app.route('/solicitar_conductor')
@@ -234,22 +239,48 @@ def cancelar_viaje(id):
         conn.commit()
     conn.close()
     return redirect("/cliente?cancelado=1")
+# --------- aceotar viaje   -------------------------
 
 @app.route('/aceptar_viaje/<int:id>')
 def aceptar_viaje(id):
-    if not session.get("user_id"): return redirect("/")
+    # 1. Verificación de sesión
+    if not session.get("user_id"): 
+        return redirect("/")
+    
+    conductor_id = session.get("user_id")
     
     conn = get_db()
-    # 🔥 AJUSTE 2: Usar 'user_id' que es lo que manejas en el login
-    conn.execute("""
-        UPDATE viajes 
-        SET estado = 'en_curso', conductor_id = ?
-        WHERE id = ?
-    """, (session['user_id'], id))
-    conn.commit()
-    conn.close()
+    try:
+        # 2. Validación: Solo aceptar si el viaje sigue 'pendiente'
+        # Esto evita errores si otro conductor lo ganó primero
+        viaje_pendiente = conn.execute(
+            "SELECT id FROM viajes WHERE id = ? AND estado = 'pendiente'", 
+            (id,)
+        ).fetchone()
+
+        if viaje_pendiente:
+            # 3. Actualización de estado a 'en_curso'
+            conn.execute("""
+                UPDATE viajes 
+                SET estado = 'en_curso', 
+                    conductor_id = ?
+                WHERE id = ?
+            """, (conductor_id, id))
+            conn.commit()
+            
+            # 4. Sincronizamos la sesión para que el mapa sepa qué ID rastrear
+            session['viaje_id'] = id
+        else:
+            # Si el viaje ya no está pendiente, lo mandamos de regreso
+            return redirect("/viajes_disponibles?error=ya_tomado")
+
+    except Exception as e:
+        print(f"Error al aceptar viaje: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
     
-    session['viaje_id'] = id
+    # 5. Redirección final a la vista del conductor donde se carga el mapa
     return redirect('/conductor')
 
 # ---------------------- APIS ----------------------
@@ -276,17 +307,27 @@ def api_viajes():
         "viajes": [dict(v) for v in viajes_pendientes],
         "viaje_activo": dict(viaje_activo) if viaje_activo else None
     })
-
 @app.route("/api_estado_viaje/<int:id>")
 def api_estado_viaje(id):
     conn = get_db()
-    v = conn.execute("SELECT estado, nombre_conductor FROM viajes WHERE id = ?", (id,)).fetchone()
+    # Hacemos un JOIN para traer el nombre real del conductor desde la tabla usuarios
+    v = conn.execute("""
+        SELECT v.estado, u.nombre as nombre_real 
+        FROM viajes v
+        LEFT JOIN usuarios u ON v.conductor_id = u.id
+        WHERE v.id = ?
+    """, (id,)).fetchone()
     conn.close()
+
     if v:
+        # Si hay un nombre en la tabla usuarios, lo mostramos; si no, "Buscando..."
+        nombre_mostrar = v["nombre_real"] if v["nombre_real"] else "Asignando..."
+        
         return jsonify({
             "estado": v["estado"],
-            "conductor": v["nombre_conductor"] if v["nombre_conductor"] else "Asignando..."
+            "conductor": nombre_mostrar
         })
+    
     return jsonify({"estado": "no_encontrado"}), 404
 
 @app.route("/actualizar_ubicacion", methods=["POST"])
