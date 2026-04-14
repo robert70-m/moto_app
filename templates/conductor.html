@@ -194,4 +194,51 @@ if (navigator.geolocation) {
 
 document.addEventListener('DOMContentLoaded', initMap);
 </script>
+<script>
+// 🔥 MODO UBER REAL - ACTUALIZACIÓN AUTOMÁTICA
+
+let viajeActualId = viaje ? viaje.id : null;
+
+function vigilarCambiosViaje() {
+    fetch("/api_viajes")
+    .then(res => res.json())
+    .then(data => {
+
+        // 🚗 SI HAY VIAJE ACTIVO
+        if (data.viaje_activo) {
+            let v = data.viaje_activo;
+
+            // 🔥 si es un viaje nuevo o cambió estado
+            if (!viaje || viajeActualId !== v.id || viaje.estado !== v.estado) {
+                
+                console.log("Actualizando ruta...");
+
+                viaje = v;
+                viajeActualId = v.id;
+
+                // redibujar ruta SIN recargar página
+                dibujarRutaSegunEstado();
+            }
+        }
+        else {
+            // ❌ ya no hay viaje
+            if (viajeActualId !== null) {
+                console.log("Viaje terminado");
+
+                viaje = null;
+                viajeActualId = null;
+
+                if (routingControl) {
+                    map.removeControl(routingControl);
+                    routingControl = null;
+                }
+            }
+        }
+    })
+    .catch(err => console.log("Error API:", err));
+}
+
+// 🔁 revisar cada 3 segundos
+setInterval(vigilarCambiosViaje, 3000);
+</script>
 {% endblock %}
