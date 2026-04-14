@@ -2,95 +2,101 @@
 
 {% block content %}
 <style>
-    /* Reset de contenedor para móvil */
-    .container {
-        padding: 0 !important;
-        margin: 0 !important;
-        max-width: 100% !important;
-    }
-    
-    .app-viewport {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 60px); 
-        width: 100vw;
-        overflow: hidden;
-    }
+.container {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+}
 
-    .controles-superiores {
-        background: white;
-        padding: 15px;
-        z-index: 1002;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
+.app-viewport {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px); 
+    width: 100vw;
+    overflow: hidden;
+}
 
-    .mapa-inferior {
-        flex-grow: 1;
-        position: relative;
-        width: 100%;
-        background: #eee;
-    }
+.controles-superiores {
+    background: white;
+    padding: 15px;
+    z-index: 1002;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
 
-    #map {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-    }
+.mapa-inferior {
+    flex-grow: 1;
+    position: relative;
+    width: 100%;
+    background: #eee;
+}
 
-    .btn-control {
-        flex: 1;
-        padding: 15px;
-        border: none;
-        border-radius: 8px;
-        font-weight: bold;
-        color: white;
-        font-size: 14px;
-        cursor: pointer;
-    }
+#map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.btn-control {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
 </style>
 
 <div class="app-viewport">
     <div class="controles-superiores">
-        <h3 style="text-align: center; margin: 0 0 10px 0;">Panel del Conductor 🏍️</h3>
+        <h3 style="text-align: center;">Panel del Conductor 🏍️</h3>
         
         {% if viaje %}
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <p style="text-align: center; margin: 0;"><b>Viaje #{{ viaje.id }}</b></p>
-                <p style="text-align: center; margin: 0; font-size: 12px; color: gray;">Estado: {{ viaje.estado }}</p>
-                
-                <div style="display: flex; gap: 10px;">
-                    {# Botones para estados iniciales #}
-                    {% if viaje.estado == 'en_curso' or viaje.estado == 'aceptado' or viaje.estado == 'en_camino' %}
-                        <button onclick="actualizarEstado('en_camino', {{ viaje.id }})" class="btn-control" style="background:#f39c12;">
-                            EN CAMINO
-                        </button>
-                        <button onclick="actualizarEstado('recogido', {{ viaje.id }})" class="btn-control" style="background:#9b59b6;">
-                            RECOGIDO
-                        </button>
-                    {% endif %}
-                </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <p style="text-align: center;"><b>Viaje #{{ viaje.id }}</b></p>
+            <p style="text-align: center; font-size: 12px; color: gray;">
+                Estado: {{ viaje.estado }}
+            </p>
 
-                {# Botón para finalizar #}
-                {% if viaje.estado == 'recogido' %}
-                    <button onclick="actualizarEstado('finalizado', {{ viaje.id }})" class="btn-control" style="background:#e74c3c; width: 100%; margin-top: 5px;">
-                        FINALIZAR VIAJE
-                    </button>
+            <div style="display: flex; gap: 10px;">
+                {% if viaje.estado in ['en_curso','aceptado','en_camino'] %}
+                <button onclick="actualizarEstado('en_camino', {{ viaje.id }})"
+                        class="btn-control" style="background:#f39c12;">
+                    EN CAMINO
+                </button>
+
+                <button onclick="actualizarEstado('recogido', {{ viaje.id }})"
+                        class="btn-control" style="background:#9b59b6;">
+                    RECOGIDO
+                </button>
                 {% endif %}
             </div>
+
+            {% if viaje.estado == 'recogido' %}
+            <button onclick="actualizarEstado('finalizado', {{ viaje.id }})"
+                    class="btn-control"
+                    style="background:#e74c3c;">
+                FINALIZAR VIAJE
+            </button>
+            {% endif %}
+        </div>
         {% else %}
-            <div style="text-align: center; padding: 10px;">
-                <p style="margin-bottom: 15px;">No tienes ningún viaje activo actualmente 🚫</p>
-                <a href="/viajes_disponibles">
-                    <button class="btn-control" style="background: #3498db; width: 100%;">VER VIAJES DISPONIBLES</button>
-                </a>
-            </div>
+        <div style="text-align: center;">
+            <p>No tienes viaje activo 🚫</p>
+            <a href="/viajes_disponibles">
+                <button class="btn-control" style="background:#3498db;">
+                    VER VIAJES DISPONIBLES
+                </button>
+            </a>
+        </div>
         {% endif %}
-        
-        <p id="status-gps" style="font-size: 11px; color: #7f8c8d; text-align: center; margin: 10px 0 0 0;">
-            Iniciando GPS... 🛰️
+
+        <p id="status-gps" style="font-size: 11px; text-align: center;">
+            Iniciando GPS...
         </p>
     </div>
 
@@ -100,145 +106,90 @@
 </div>
 
 <script>
-// 1. Convertir objeto de Python a JSON para JS
 let viaje = {{ viaje|tojson if viaje else "null" }};
 let map, markerMoto, routingControl;
-let ultimaLat = null, ultimaLng = null;
+let ultimaLat = null;
 
 function initMap() {
-    map = L.map('map', { zoomControl: false }).setView([0, 0], 13);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
+    map = L.map('map', { zoomControl: false }).setView([0,0], 13);
 
-    markerMoto = L.marker([0, 0], {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+        .addTo(map);
+
+    markerMoto = L.marker([0,0], {
         icon: L.icon({
             iconUrl: 'https://cdn-icons-png.flaticon.com/512/71/71422.png',
-            iconSize: [35, 35],
-            iconAnchor: [17, 17]
+            iconSize: [35,35]
         })
     }).addTo(map);
+}
 
-    if (viaje) {
-        dibujarRutaSegunEstado();
+function actualizarRuta(lat, lng) {
+    if (!viaje) return;
+
+    const puntoConductor = L.latLng(lat, lng);
+    const puntoCliente = L.latLng(viaje.lat, viaje.lng);
+    const puntoDestino = L.latLng(viaje.lat_destino, viaje.lng_destino);
+
+    let waypoints = [];
+
+    if (["aceptado","en_curso","en_camino"].includes(viaje.estado)) {
+        waypoints = [puntoConductor, puntoCliente];
+    } else if (viaje.estado === "recogido") {
+        waypoints = [puntoConductor, puntoDestino];
+    }
+
+    if (waypoints.length > 0) {
+        if (routingControl) map.removeControl(routingControl);
+
+        routingControl = L.Routing.control({
+            waypoints: waypoints,
+            createMarker: () => null,
+            addWaypoints: false,
+            show: false
+        }).addTo(map);
     }
 }
 
-function dibujarRutaSegunEstado() {
-    if (!viaje) return;
-
-    navigator.geolocation.getCurrentPosition(function(pos) {
-        const latConductor = pos.coords.latitude;
-        const lngConductor = pos.coords.longitude;
-        const puntoCliente = L.latLng(viaje.lat, viaje.lng);
-        const puntoDestino = L.latLng(viaje.lat_destino, viaje.lng_destino);
-        const puntoConductor = L.latLng(latConductor, lngConductor);
-
-        let waypoints = [];
-
-        if (viaje.estado === "aceptado" || viaje.estado === "en_curso" || viaje.estado === "en_camino") {
-            waypoints = [puntoConductor, puntoCliente];
-            L.marker(puntoCliente).addTo(map).bindPopup("📍 Recoger aquí").openPopup();
-        } 
-        else if (viaje.estado === "recogido") {
-            waypoints = [puntoConductor, puntoDestino];
-            L.marker(puntoDestino).addTo(map).bindPopup("🏁 Destino Final").openPopup();
-        }
-
-        if (waypoints.length > 0) {
-            if (routingControl) map.removeControl(routingControl);
-            routingControl = L.Routing.control({
-                waypoints: waypoints,
-                createMarker: function() { return null; },
-                routeWhileDragging: false,
-                addWaypoints: false,
-                show: false 
-            }).addTo(map);
-            map.fitBounds(L.latLngBounds(waypoints), { padding: [50, 50] });
-        }
-    });
-}
-
-function actualizarEstado(nuevoEstado, id) {
-    fetch(`/estado/${id}/${nuevoEstado}`)
-        .then(() => {
-            location.reload(); 
-        })
-        .catch(err => alert("Error al conectar con el servidor"));
+function actualizarEstado(estado, id) {
+    fetch(`/estado/${id}/${estado}`)
+        .then(() => location.reload());
 }
 
 if (navigator.geolocation) {
     navigator.geolocation.watchPosition(function(pos) {
         let lat = pos.coords.latitude;
         let lng = pos.coords.longitude;
-        let nuevaPos = [lat, lng];
 
-        document.getElementById("status-gps").innerHTML = "Ubicación GPS Activa ✅";
-        document.getElementById("status-gps").style.color = "#27ae60";
+        document.getElementById("status-gps").innerHTML = "GPS activo ✅";
 
-        if (markerMoto) markerMoto.setLatLng(nuevaPos);
-        if (!ultimaLat) { map.setView(nuevaPos, 16); }
+        markerMoto.setLatLng([lat, lng]);
+
+        if (!ultimaLat) {
+            map.setView([lat, lng], 16);
+        }
 
         if (ultimaLat && Math.abs(lat - ultimaLat) < 0.00001) return;
-        ultimaLat = lat; ultimaLng = lng;
+        ultimaLat = lat;
+
+        // 🔥 ACTUALIZAR RUTA EN TIEMPO REAL
+        actualizarRuta(lat, lng);
 
         let formData = new FormData();
         formData.append("lat", lat);
         formData.append("lng", lng);
-        fetch("/actualizar_ubicacion", { method: "POST", body: formData });
-    }, function(error) {
-        document.getElementById("status-gps").innerHTML = "GPS Desactivado ❌";
+
+        fetch("/actualizar_ubicacion", {
+            method: "POST",
+            body: formData
+        });
+
+    }, function() {
+        document.getElementById("status-gps").innerHTML = "GPS error ❌";
     }, { enableHighAccuracy: true });
 }
 
-document.addEventListener('DOMContentLoaded', initMap);
+document.addEventListener("DOMContentLoaded", initMap);
 </script>
-<script>
-// 🔥 MODO UBER REAL - ACTUALIZACIÓN AUTOMÁTICA
 
-let viajeActualId = viaje ? viaje.id : null;
-
-function vigilarCambiosViaje() {
-    fetch("/api_viajes")
-    .then(res => res.json())
-    .then(data => {
-
-        // 🚗 SI HAY VIAJE ACTIVO
-        if (data.viaje_activo) {
-            let v = data.viaje_activo;
-
-            // 🔥 si es un viaje nuevo o cambió estado
-            if (!viaje || viajeActualId !== v.id || viaje.estado !== v.estado) {
-                
-                console.log("Actualizando ruta...");
-
-                viaje = v;
-                viajeActualId = v.id;
-
-                // redibujar ruta SIN recargar página
-                dibujarRutaSegunEstado();
-            }
-        }
-        else {
-            // ❌ ya no hay viaje
-            if (viajeActualId !== null) {
-                console.log("Viaje terminado");
-
-                viaje = null;
-                viajeActualId = null;
-
-                if (routingControl) {
-                    map.removeControl(routingControl);
-                    routingControl = null;
-                }
-            }
-        }
-    })
-    .catch(err => console.log("Error API:", err));
-}
-
-// 🔁 revisar cada 3 segundos
-setInterval(vigilarCambiosViaje, 3000);
-</script>
 {% endblock %}

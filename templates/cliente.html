@@ -31,19 +31,20 @@
    onclick="return confirm('¿Seguro que quieres cancelar el viaje?')">
     Cancelar viaje ❌
 </a>
-    
 
-    <div style="text-align:center; margin-top:10px;">
-        <p id="mensaje_estado" style="font-weight:bold; font-size: 18px; color: #2c3e50;"></p>
-    </div>
-    <a href="/solicitar_conductor" class="btn">
-    🚗 Quiero ser conductor
+<div style="text-align:center; margin-top:10px;">
+    <p id="mensaje_estado" style="font-weight:bold; font-size: 18px; color: #2c3e50;"></p>
+</div>
+
+<a href="/solicitar_conductor" class="btn">
+🚗 Quiero ser conductor
 </a>
-    {% else %}
-    <p style="text-align:center; margin-top:10px; font-size: 18px; font-weight: bold;">
-        🚗 Tu viaje está en proceso...
-    </p>
-    {% endif %}
+
+{% else %}
+<p style="text-align:center; margin-top:10px; font-size: 18px; font-weight: bold;">
+    🚗 Tu viaje está en proceso...
+</p>
+{% endif %}
 </div>
 
 <div id="status_conductor" style="display:none; padding:20px; background:#d4edda; border-radius:12px; margin: 15px 0; border: 2px solid #155724; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
@@ -58,7 +59,6 @@
 </div>
 
 <style>
-/* NUEVOS ESTILOS PARA BOTONES GRANDES */
 .input-rudo {
     width: 100%;
     padding: 18px !important;
@@ -116,7 +116,6 @@
 </style>
 
 <script>
-// TODA TU LÓGICA DE JAVASCRIPT SIGUE AQUÍ IGUAL (NO SE CAMBIÓ NADA)
 document.addEventListener("DOMContentLoaded", function() {
     let map = null;
     let marcadorUsuario = null;
@@ -126,17 +125,18 @@ document.addEventListener("DOMContentLoaded", function() {
     function initMap(lat, lng) {
         if (map) return; 
         map = L.map('map').setView([lat, lng], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
         setTimeout(() => { map.invalidateSize(); }, 500);
 
         map.on('click', function(e) {
             let latD = e.latlng.lat;
             let lngD = e.latlng.lng;
+
             document.getElementById("lat_destino").value = latD;
             document.getElementById("lng_destino").value = lngD;
             document.getElementById("input_destino").value = "Destino marcado ✅";
+
             if (marcadorDestino) {
                 marcadorDestino.setLatLng([latD, lngD]);
             } else {
@@ -149,48 +149,29 @@ document.addEventListener("DOMContentLoaded", function() {
         navigator.geolocation.watchPosition(function(pos) {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
-            document.getElementById("lat").value = lat;
-            document.getElementById("lng").value = lng;
-            document.getElementById("input_origen").value = "Ubicación Detectada ✅";
+
+            if (document.getElementById("lat")) {
+                document.getElementById("lat").value = lat;
+                document.getElementById("lng").value = lng;
+                document.getElementById("input_origen").value = "Ubicación Detectada ✅";
+            }
+
             if (!map) initMap(lat, lng);
+
             if (marcadorUsuario) {
                 marcadorUsuario.setLatLng([lat, lng]);
             } else {
                 marcadorUsuario = L.marker([lat, lng]).addTo(map).bindPopup("Estás aquí").openPopup();
             }
+
             if (primeraVez && map) {
                 map.setView([lat, lng], 16);
                 primeraVez = false;
             }
-        }, function(err) {
-            if (!map) initMap(16.75, -96.67); 
-        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        });
     }
-
-    function vigilarViaje() {
-        const idViaje = "{{ viaje_id }}";
-        if (!idViaje || idViaje === "None" || idViaje === "") {
-            document.getElementById("status_conductor").style.display = "none";
-            return; 
-        }
-        fetch(`/api_estado_viaje/${idViaje}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.estado === 'finalizado') {
-                    setTimeout(() => { window.location.href = "/cliente"; }, 1500);
-                } 
-                else if (['aceptado','en_camino','recogido'].includes(data.estado)) {
-                    document.getElementById("status_conductor").style.display = "block";
-                    document.getElementById("nombre_en_pantalla").innerText = data.conductor;
-                    document.getElementById("texto_estado").innerText = data.estado;
-                }
-            });
-    }
-    setInterval(vigilarViaje, 3000);
 });
 </script>
-
-<!-- Mantengo tus otros scripts de vigilancia y Nominatim exactamente iguales... -->
 
 <script>
 function actualizarEstadoPantalla() {
@@ -203,33 +184,25 @@ function actualizarEstadoPantalla() {
         const msg = document.getElementById("mensaje_estado");
         const btnCancelar = document.querySelector(".btn-cancelar-rudo");
 
-        console.log("Estado:", data.estado, "Conductor:", data.conductor);
-
         if (data.estado === "pendiente") {
             msg.innerText = "⏳ Esperando conductor...";
         }
-
         else if (data.estado === "aceptado") {
             msg.innerText = `✅ ${data.conductor} aceptó tu viaje`;
         }
-
         else if (data.estado === "en_camino") {
             msg.innerText = `🚗 ${data.conductor} va en camino`;
         }
-
         else if (data.estado === "recogido") {
             msg.innerText = `📍 ${data.conductor} ya te recogió`;
         }
-
         else if (data.estado === "finalizado") {
             msg.innerText = "🏁 Viaje finalizado";
         }
-b
         else if (data.estado === "no_encontrado") {
             msg.innerText = "❌ Viaje no encontrado";
         }
 
-        // Ocultar cancelar cuando ya hay conductor
         if (["aceptado", "en_camino", "recogido"].includes(data.estado)) {
             if (btnCancelar) btnCancelar.style.display = "none";
         }
