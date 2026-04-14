@@ -188,8 +188,10 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     setInterval(vigilarViaje, 3000);
 });
+</script>
 
-// Mantengo tus otros scripts de vigilancia y Nominatim exactamente iguales...
+<!-- Mantengo tus otros scripts de vigilancia y Nominatim exactamente iguales... -->
+
 <script>
 function actualizarEstadoPantalla() {
     const idViaje = "{{ viaje_id }}";
@@ -222,7 +224,7 @@ function actualizarEstadoPantalla() {
         else if (data.estado === "finalizado") {
             msg.innerText = "🏁 Viaje finalizado";
         }
-
+b
         else if (data.estado === "no_encontrado") {
             msg.innerText = "❌ Viaje no encontrado";
         }
