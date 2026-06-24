@@ -1,3 +1,0 @@
-ususario= no de teléfono
-
-password = m123=
