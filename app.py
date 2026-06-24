@@ -92,11 +92,14 @@ crear_tablas()
 
 # ---------------------- LOGIN ----------------------
 from werkzeug.security import check_password_hash, generate_password_hash
-@app.route("/", methods=["GET", "POST"]) 
+
+@app.route("/", methods=["GET", "POST"])
 def login():
-    # --- 1. VALIDACIÓN DE SESIÓN ACTIVA (Evita re-login al recargar) ---
+
+    # --- 1. VALIDACIÓN DE SESIÓN ACTIVA ---
     if request.method == "GET" and "user_id" in session:
         tipo_sesion = session.get("tipo", "").lower().strip()
+
         if tipo_sesion == "admin":
             return redirect(url_for("admin"))
         elif tipo_sesion == "conductor":
@@ -107,56 +110,73 @@ def login():
     error = None
 
     if request.method == "POST":
+
         telefono = request.form.get("telefono", "").strip()
         password = request.form.get("password", "").strip()
 
         conn = get_db()
+
         user = conn.execute(
             "SELECT * FROM usuarios WHERE telefono=?",
             (telefono,)
         ).fetchone()
 
         if user:
+
             password_db = user["password"]
 
-            # 🔐 CASO 1: Ya tiene hash (Seguro)
+            # 🔐 CASO 1: Contraseña con hash
             if password_db.startswith("scrypt:") or password_db.startswith("pbkdf2:"):
+
                 if not check_password_hash(password_db, password):
                     conn.close()
                     error = "Teléfono o contraseña incorrectos"
                     return render_template("login.html", error=error)
 
-            # 🟡 CASO 2: Contraseña vieja (Texto plano)
+            # 🟡 CASO 2: Contraseña vieja en texto plano
             else:
+
                 if password_db != password:
                     conn.close()
                     error = "Teléfono o contraseña incorrectos"
                     return render_template("login.html", error=error)
 
-                # 🔥 Actualizamos a hash automáticamente para que la próxima vez sea seguro
+                # Actualizar automáticamente a hash
                 hash_nuevo = generate_password_hash(password)
+
                 conn.execute(
                     "UPDATE usuarios SET password=? WHERE id=?",
                     (hash_nuevo, user["id"])
                 )
+
                 conn.commit()
 
-            # El resto del código de sesión (session.clear(), etc.) va aquí abajo...
+            # 🔒 NUEVO: VALIDAR SI EL USUARIO ESTÁ BLOQUEADO
+            if user["activo"] == 0:
+                conn.close()
+                error = "Tu cuenta ha sido desactivada. Contacta al administrador."
+                return render_template("login.html", error=error)
+
             conn.close()
-               # ✅ CREAR SESIÓN LIMPIA
+
+            # ✅ CREAR SESIÓN LIMPIA
             session.clear()
+
             session["user_id"] = user["id"]
             session["nombre"] = user["nombre"]
             session["telefono"] = user["telefono"]
 
             tipo_usuario = str(user["tipo"]).lower().strip()
+
             session["tipo"] = tipo_usuario
 
             # 🚀 REDIRECCIÓN SEGÚN ROL
             if tipo_usuario == "admin":
                 return redirect(url_for("admin"))
+
             elif tipo_usuario == "conductor":
                 return redirect(url_for("conductor"))
+
             else:
                 return redirect(url_for("cliente"))
 
@@ -165,6 +185,7 @@ def login():
             error = "Teléfono o contraseña incorrectos"
 
     return render_template("login.html", error=error)
+
 # ---------------------- REGISTRO CLIENTE ----------------------
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
