@@ -92,6 +92,7 @@ crear_tablas()
 
 # ---------------------- LOGIN ----------------------
 from werkzeug.security import check_password_hash, generate_password_hash
+from flask import request, session, redirect, url_for, render_template
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -110,7 +111,6 @@ def login():
     error = None
 
     if request.method == "POST":
-
         telefono = request.form.get("telefono", "").strip()
         password = request.form.get("password", "").strip()
 
@@ -123,60 +123,52 @@ def login():
 
         if user:
 
+            # 🚫 VALIDACIÓN DE USUARIO ACTIVO (IMPORTANTE)
+            if user["activo"] == 0:
+                conn.close()
+                error = "Usuario bloqueado o inactivo"
+                return render_template("login.html", error=error)
+
             password_db = user["password"]
 
-            # 🔐 CASO 1: Contraseña con hash
+            # 🔐 CASO 1: contraseña con hash
             if password_db.startswith("scrypt:") or password_db.startswith("pbkdf2:"):
-
                 if not check_password_hash(password_db, password):
                     conn.close()
                     error = "Teléfono o contraseña incorrectos"
                     return render_template("login.html", error=error)
 
-            # 🟡 CASO 2: Contraseña vieja en texto plano
+            # 🟡 CASO 2: contraseña en texto plano
             else:
-
                 if password_db != password:
                     conn.close()
                     error = "Teléfono o contraseña incorrectos"
                     return render_template("login.html", error=error)
 
-                # Actualizar automáticamente a hash
+                # 🔥 actualizar a hash automáticamente
                 hash_nuevo = generate_password_hash(password)
-
                 conn.execute(
                     "UPDATE usuarios SET password=? WHERE id=?",
                     (hash_nuevo, user["id"])
                 )
-
                 conn.commit()
 
-            # 🔒 NUEVO: VALIDAR SI EL USUARIO ESTÁ BLOQUEADO
-            if user["activo"] == 0:
-                conn.close()
-                error = "Tu cuenta ha sido desactivada. Contacta al administrador."
-                return render_template("login.html", error=error)
-
-            conn.close()
-
-            # ✅ CREAR SESIÓN LIMPIA
+            # --- SESIÓN ---
             session.clear()
-
             session["user_id"] = user["id"]
             session["nombre"] = user["nombre"]
             session["telefono"] = user["telefono"]
 
             tipo_usuario = str(user["tipo"]).lower().strip()
-
             session["tipo"] = tipo_usuario
+
+            conn.close()
 
             # 🚀 REDIRECCIÓN SEGÚN ROL
             if tipo_usuario == "admin":
                 return redirect(url_for("admin"))
-
             elif tipo_usuario == "conductor":
                 return redirect(url_for("conductor"))
-
             else:
                 return redirect(url_for("cliente"))
 
@@ -185,7 +177,6 @@ def login():
             error = "Teléfono o contraseña incorrectos"
 
     return render_template("login.html", error=error)
-
 # ---------------------- REGISTRO CLIENTE ----------------------
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
