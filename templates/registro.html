@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Crear Cuenta - Moto App{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-top: 20px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <i class="fas fa-user-plus" style="font-size: 3rem; color: var(--accent);"></i>
+        <h2 style="margin: 10px 0;">Registro de Cliente</h2>
+        <p style="color: #666;">Crea tu cuenta para pedir tus viajes</p>
+    </div>
+
+    <form action="{{ url_for('registro') }}" method="POST" autocomplete="off">
+        <input type="hidden" name="tipo" value="cliente">
+
+        <div style="margin-bottom: 15px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">
+                <i class="fas fa-user"></i> Nombre Completo
+            </label>
+            <input type="text" name="nombre" placeholder="Ej. Juan Pérez" required>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">
+                <i class="fas fa-phone"></i> Número de Teléfono
+            </label>
+            <input 
+                type="tel"
+                name="telefono"
+                placeholder="10 dígitos"
+                required
+                pattern="[0-9]{10}"
+                inputmode="numeric"
+                title="Por favor ingresa 10 dígitos"
+            >
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">
+                <i class="fas fa-lock"></i> Contraseña
+            </label>
+            <input 
+                type="password"
+                name="password"
+                placeholder="Mínimo 4 caracteres"
+                minlength="4"
+                required
+            >
+        </div>
+
+        <button type="submit" 
+                style="width: 100%; padding: 15px; background: var(--accent); color: white; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: bold; cursor: pointer;">
+            REGISTRARME AHORA
+        </button>
+    </form>
+
+    <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+        <p>¿Ya tienes una cuenta?</p>
+        <a href="{{ url_for('login') }}" style="color: var(--primary); font-weight: bold; text-decoration: none;">
+            Inicia Sesión aquí
+        </a>
+    </div>
+</div>
+{% endblock %}

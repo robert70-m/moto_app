@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+<audio id="sonidoNotificacion"
+src="{{ url_for('static', filename='alerta.mp3') }}"
+preload="auto"></audio>
+
+<div class="card" style="text-align:center;padding:15px;margin-bottom:10px;">
+
+    <h2 style="margin:5px 0;font-size:1.5rem;">
+        Panel del mototaxi 
+    </h2>
+
+    <p style="margin:8px 0;">
+        Estado:
+        <strong id="status-text"
+        style="font-size:1.2rem;color:#27ae60;">
+            En línea 🟢
+        </strong>
+    </p>
+
+    <!-- NUEVO CONTADOR -->
+    <div style="background:#f4f6f7;
+                padding:12px;
+                border-radius:10px;
+                margin:10px 0;
+                font-size:1.1rem;">
+        🏁 Viajes realizados:
+        <strong style="color:#27ae60;">
+            {{ total_viajes }}
+        </strong>
+    </div>
+
+    <a href="{{ url_for('viajes_disponibles') }}"
+       style="text-decoration:none;">
+
+        <button style="
+            background:#3498db;
+            width:100%;
+            padding:15px;
+            border:none;
+            color:white;
+            border-radius:10px;
+            font-weight:bold;
+            font-size:1.1rem;
+            cursor:pointer;
+            box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+
+            🔎 Ver Viajes Disponibles
+        </button>
+    </a>
+</div>
+
+<div id="alerta-viaje"
+     class="alerta-viaje"
+     style="display:none;"
+     onclick="detenerAlerta()">
+
+    🚨 NUEVO VIAJE DISPONIBLE 🚨
+    (Toca para silenciar)
+</div>
+
+<div id="contenedor-viaje-activo"
+     class="card"
+     style="padding:10px;margin-bottom:20px;">
+
+    <h3 style="text-align:center;margin-top:5px;">
+        Control de Viaje Activo
+    </h3>
+
+    {% if viaje %}
+        <div id="map_conductor"
+             style="
+                height:50vh;
+                width:100%;
+                border-radius:10px;
+                margin-bottom:15px;
+                border:1px solid #ddd;
+                z-index:1;">
+        </div>
+    {% else %}
+        <div id="sin-viaje-msg"
+             style="
+                text-align:center;
+                padding:50px;
+                background:#f9f9f9;
+                border-radius:10px;
+                color:#95a5a6;
+                font-style:italic;">
+
+            No hay viaje activo.
+            Ve a "Ver Mandados Disponibles".
+        </div>
+    {% endif %}
+
+    <div id="botones-control"
+         style="
+            flex-direction:column;
+            gap:12px;
+            {% if not viaje %}
+            display:none;
+            {% else %}
+            display:flex;
+            {% endif %}
+         ">
+
+        <button class="btn-estado"
+                id="btn-en-camino"
+                onclick="actualizarEstado('en_camino','{{ viaje.id if viaje else '' }}')"
+                {% if not viaje or viaje.estado != 'aceptado' %}disabled{% endif %}
+                style="background:#f39c12;">
+
+            1. En Camino al Cliente 🚲
+        </button>
+
+        <button class="btn-estado"
+                id="btn-recogido"
+                onclick="actualizarEstado('recogido','{{ viaje.id if viaje else '' }}')"
+                {% if not viaje or (viaje.estado != 'en_camino' and viaje.estado != 'aceptado') %}disabled{% endif %}
+                style="background:#2980b9;">
+
+            2. Cliente recogido ✅
+        </button>
+
+        <button class="btn-estado"
+                id="btn-finalizado"
+                onclick="actualizarEstado('finalizado','{{ viaje.id if viaje else '' }}')"
+                {% if not viaje or (viaje.estado != 'recogido' and viaje.estado != 'en_camino') %}disabled{% endif %}
+                style="background:#27ae60;">
+
+            3. Finalizar y Cobrar 🏁
+        </button>
+    </div>
+</div>
+
+<style>
+.btn-estado{
+    width:100%;
+    padding:18px;
+    border:none;
+    color:white;
+    border-radius:12px;
+    font-weight:bold;
+    font-size:1.2rem;
+    cursor:pointer;
+    transition:background .3s;
+    box-shadow:0 4px 10px rgba(0,0,0,.15);
+}
+
+.btn-estado:disabled{
+    background:#bdc3c7 !important;
+    cursor:not-allowed;
+    opacity:.6;
+    box-shadow:none;
+}
+
+.alerta-viaje{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    background:#e74c3c;
+    color:white;
+    text-align:center;
+    padding:25px;
+    font-weight:bold;
+    font-size:1.3rem;
+    z-index:9999;
+    box-shadow:0 5px 15px rgba(0,0,0,.3);
+    animation:pulse 1s infinite;
+}
+
+@keyframes pulse{
+    0%{opacity:1;}
+    50%{opacity:.7;}
+    100%{opacity:1;}
+}
+</style>
+
+<script>
+// Función actualizar estado
+function actualizarEstado(nuevoEstado, viajeId){
+    if(!viajeId || viajeId==="") return;
+
+    const botones=document.querySelectorAll('.btn-estado');
+    botones.forEach(b=>b.disabled=true);
+
+    fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`,{
+        method:"POST"
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.status==="ok" || data.status==="OK"){
+            if(nuevoEstado==="finalizado"){
+                window.location.replace("/viajes_disponibles");
+            }else{
+                location.reload();
+            }
+        }else{
+            alert("Error actualizando viaje");
+            location.reload();
+        }
+    })
+    .catch(()=>{
+        alert("Error conexión");
+        location.reload();
+    });
+}
+
+// Iconos personalizados para el Mapa
+const iconVerde = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+const iconRojo = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+{% if viaje %}
+let map;
+
+document.addEventListener("DOMContentLoaded",function(){
+
+    const latO={{ viaje.lat or 0 }};
+    const lngO={{ viaje.lng or 0 }};
+    const latD={{ viaje.lat_destino or 0 }};
+    const lngD={{ viaje.lng_destino or 0 }};
+
+    if(latO && lngO && latD && lngD){
+
+        // Inicializamos el mapa centrado temporalmente en el origen
+        map = L.map('map_conductor').setView([latO, lngO], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Creamos la ruta en el mapa conectando origen y destino con Leaflet Routing Machine
+        L.Routing.control({
+            waypoints: [
+                L.latLng(latO, lngO),
+                L.latLng(latD, lngD)
+            ],
+            createMarker: function(i, wp) {
+                // i === 0 es Origen (Recogida), i === 1 es el Destino final
+                const iconoText = (i === 0) ? "Punto de Recogida" : "Destino Final";
+                const iconoColor = (i === 0) ? iconVerde : iconRojo;
+                return L.marker(wp.latLng, { icon: iconoColor }).bindPopup(`<b>${iconoText}</b>`);
+            },
+            addWaypoints: false,
+            draggableWaypoints: false,
+            show: false, // Oculta el cuadro de texto con las instrucciones de calles
+            lineOptions: {
+                styles: [{ color: '#3498db', opacity: 0.8, weight: 6 }]
+            }
+        }).addTo(map);
+
+        setTimeout(()=>{
+            map.invalidateSize();
+        },700);
+    }
+});
+{% endif %}
+
+let alertaActiva=false;
+
+function iniciarAlerta(){
+    const div=document.getElementById("alerta-viaje");
+    const sonido=document.getElementById("sonidoNotificacion");
+
+    if(!alertaActiva){
+        alertaActiva=true;
+        div.style.display="block";
+
+        sonido.loop=true;
+        sonido.play().catch(()=>{});
+    }
+}
+
+function detenerAlerta(){
+    const div=document.getElementById("alerta-viaje");
+    const sonido=document.getElementById("sonidoNotificacion");
+
+    alertaActiva=false;
+    div.style.display="none";
+    sonido.pause();
+    sonido.currentTime=0;
+}
+
+setInterval(function(){
+
+{% if viaje %}
+
+fetch('/api_verificar_status_viaje/{{ viaje.id }}')
+.then(r=>r.json())
+.then(data=>{
+
+    if(data.estado==='cancelado'){
+        alert("Cliente canceló viaje");
+        window.location.replace("/viajes_disponibles");
+    }
+});
+
+{% else %}
+
+fetch('/api/verificar_viajes')
+.then(r=>r.json())
+.then(data=>{
+    if(data.hay_viajes){
+        iniciarAlerta();
+    }else{
+        detenerAlerta();
+    }
+});
+
+{% endif %}
+
+},1500);
+</script>
+{% endblock %}

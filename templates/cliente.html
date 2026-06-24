@@ -1,0 +1,155 @@
+{% extends "base.html" %} 
+
+{% block content %}
+<div id="mensaje-alerta" style="display:none;" class="alerta">
+    <span id="texto-alerta"></span>
+</div>
+
+<div class="card" style="padding: 15px; margin-top: 10px;">
+    <h2 style="text-align: center; margin-bottom: 15px; color: var(--primary);">Pedir Servicio de Moto 🏍️</h2>
+
+    {% if request.args.get('error') %}
+    <div style="background: #fdeaea; color: #e74c3c; padding: 12px; border-radius: 8px; border: 1px solid #f5c6cb; font-weight: bold; text-align: center; margin-bottom: 15px;">
+        {{ request.args.get('error') }}
+    </div>
+    {% endif %}
+
+    <form action="{{ url_for('pedir_viaje') }}" method="POST" id="form-viaje" style="display: flex; flex-direction: column; gap: 12px; {% if viaje_id %}display:none;{% endif %}">
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label style="font-weight: bold; font-size: 0.9rem;">📍 Punto de partida:</label>
+            <input type="text" id="input_origen" name="origen" placeholder="Detectando ubicación..." readonly required class="input-form">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label style="font-weight: bold; font-size: 0.9rem;">🏁 Destino:</label>
+            <input type="text" id="input_destino" name="destino" placeholder="Toca el mapa para marcar destino" readonly required class="input-form">
+        </div>
+
+        <input type="hidden" id="lat" name="lat">
+        <input type="hidden" id="lng" name="lng">
+        <input type="hidden" id="lat_destino" name="lat_destino">
+        <input type="hidden" id="lng_destino" name="lng_destino">
+
+        <button type="submit" class="btn-pedir">PEDIR SERVICIO AHORA 🚀</button>
+    </form>
+
+    {% if viaje_id %}
+    <div id="contenedor-cancelar" style="margin-top: 10px;">
+        <p style="text-align:center; color:#7f8c8d; font-style:italic; margin-bottom:10px;">Esperando que un CONDUCTOR tome el viaje...</p>
+        <button type="button" onclick="ejecutarCancelacion('{{ viaje_id }}')" style="background:#e74c3c; color:white; padding:15px; border:none; border-radius:10px; width:100%; font-weight:bold; font-size:1rem; cursor:pointer;">
+            ❌ Cancelar VIAJE
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<div id="status_conductor" style="display:none; padding:20px; background:#d4edda; border-radius:15px; margin:15px 0; border:2px solid #c3e6cb;">
+    <h3 style="text-align: center; margin-top: 0; color: #155724;">¡conductor Asignada! ✅</h3>
+    <div style="font-size: 1.1rem; line-height: 1.6;">
+        <p>👤 <strong>Nombre:</strong> <span id="nombre_en_pantalla">...</span></p>
+        <p>🔢 <strong>unidad:</strong> <span id="unidad_en_pantalla">...</span></p>
+        <p>🎨 <strong>Color:</strong> <span id="color_en_pantalla">...</span></p>
+        <p>📍 <strong>Estado:</strong> <span id="texto_estado" style="font-weight: bold; color: #27ae60;">Buscando...</span></p>
+    </div>
+</div>
+
+<div class="card" style="padding: 5px; height: 400px; margin-bottom: 30px;">
+    <div id="map" style="height:100%; border-radius: 12px; z-index: 1;"></div>
+</div>
+<script>
+let map = null;
+let marcadorUsuario = null;
+let marcadorDestino = null;
+let marcador = null; // marcador para la Moto
+let alertaTomadaMostrada = false;
+let alertaFinalizadoMostrada = false;
+let ejecutando = false;
+
+const iconoCliente = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize: [35,35], iconAnchor: [17, 35] });
+const iconoDestino = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/447/447031.png', iconSize: [35,35], iconAnchor: [17, 35] });
+const iconoMoto = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/71/71422.png', iconSize: [30, 30], iconAnchor: [15, 15] });
+
+function ejecutarCancelacion(viajeId) {
+    if (confirm('¿Seguro que deseas cancelar Servicio?')) {
+        fetch(`/cancelar_viaje/${viajeId}`).then(() => window.location.replace("{{ url_for('cliente') }}"));
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(function(pos) {
+            let lat = pos.coords.latitude;
+            let lng = pos.coords.longitude;
+            document.getElementById("lat").value = lat;
+            document.getElementById("lng").value = lng;
+            document.getElementById("input_origen").value = "Ubicación detectada ✅";
+            
+            if (!map) {
+                map = L.map('map').setView([lat, lng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                map.on('click', function(e) {
+                    if (document.getElementById("status_conductor").style.display === "block") return;
+                    document.getElementById("lat_destino").value = e.latlng.lat;
+                    document.getElementById("lng_destino").value = e.latlng.lng;
+                    document.getElementById("input_destino").value = "Destino marcado ✅";
+                    if (marcadorDestino) marcadorDestino.setLatLng(e.latlng);
+                    else marcadorDestino = L.marker(e.latlng, {icon: iconoDestino}).addTo(map);
+                });
+            }
+            if (marcadorUsuario) marcadorUsuario.setLatLng([lat, lng]);
+            else marcadorUsuario = L.marker([lat, lng], {icon: iconoCliente}).addTo(map);
+        });
+    }
+
+    window.vigilarViaje = function() {
+        const viajeId = "{{ viaje_id }}";
+        if (!viajeId || viajeId === "None" || viajeId === "" || ejecutando) return;
+        ejecutando = true;
+
+        fetch(`/api_estado_viaje/${viajeId}`)
+        .then(r => r.json())
+        .then(d => {
+            if (d.estado === "finalizado" && !alertaFinalizadoMostrada) {
+                alertaFinalizadoMostrada = true;
+                alert("🏁 ¡Has llegado a tu destino!");
+                window.location.replace("{{ url_for('cliente') }}");
+                return;
+            }
+
+            // SI EL VIAJE ES ACEPTADO O ESTÁ EN CURSO
+            if (["aceptado", "en_camino", "recogido", "cerca"].includes(d.estado)) {
+                // 1. Mostrar el panel de datos
+                document.getElementById("status_conductor").style.display = "block";
+                document.getElementById("form-viaje").style.display = "none";
+                if(document.getElementById("contenedor-cancelar")) document.getElementById("contenedor-cancelar").style.display = "none";
+
+                // 2. Llenar los datos del conductor (Usando los nombres que te di en el Python)
+                document.getElementById("nombre_en_pantalla").innerText = d.nombre;
+                document.getElementById("unidad_en_pantalla").innerText = d.unidad;
+                document.getElementById("color_en_pantalla").innerText = d.color;
+                document.getElementById("texto_estado").innerText = d.estado.toUpperCase();
+
+                // 3. MOVER LA MOTO EN EL MAPA
+                if (d.lat && d.lng) {
+                    if (marcadorMoto) {
+                        marcador>Moto.setLatLng([d.lat, d.lng]);
+                    } else {
+                        marcadorMOTO = L.marker([d.lat, d.lng], {icon: iconoMoto}).addTo(map);
+                    }
+                }
+
+                if (!alertaTomadaMostrada) {
+                    alert("✅ ¡Un conductor ha tomado tu viaje!");
+                    alertaTomadaMostrada = true;
+                }
+            }
+        })
+        .catch(err => console.error("Error:", err))
+        .finally(() => { ejecutando = false; });
+    };
+
+    setInterval(window.vigilarViaje, 3000);
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" style="max-width: 1000px; width: 100%; margin: auto;">
+    <h2 style="text-align: center;">
+        <i class="fas fa-users-cog"></i> Gestión de Conductores
+    </h2>
+
+    <div style="margin-bottom: 20px;">
+        <input type="text" id="buscador"
+               placeholder="🔍 Buscar por nombre o teléfono..."
+               onkeyup="filtrarTabla()"
+               style="padding: 10px; width: 100%;">
+    </div>
+
+    <div style="overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+
+            <a href="{{ url_for('registro_conductor') }}" class="btn-pago" style="background: #27ae60; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                <i class="fas fa-plus"></i> Registrar Nuevo Conductor
+            </a>
+
+            <div style="display: flex; gap: 10px;">
+                <form method="GET" action="{{ url_for('reset_viajes') }}" onsubmit="return confirm('⚠️ ¿Borrar TODOS los viajes?');">
+                    <button type="submit" class="btn-bloquear" style="background:#e67e22; border:none; cursor:pointer;">
+                        <i class="fas fa-route"></i> Reset Viajes
+                    </button>
+                </form>
+
+                <form method="GET" action="{{ url_for('reset_conductores') }}" onsubmit="return confirm('¿Borrar todos los conductores?');">
+                    <button type="submit" class="btn-bloquear" style="border:none; cursor:pointer;">
+                        <i class="fas fa-user-slash"></i> Borrar Conductores
+                    </button>
+                </form>
+
+                <form method="GET" action="{{ url_for('reset_clientes') }}" onsubmit="return confirm('¿Borrar todos los clientes?');">
+                    <button type="submit" style="background:#7f8c8d; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">
+                        <i class="fas fa-users-slash"></i> Borrar Clientes
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <table id="tablaConductores">
+            <thead>
+                <tr style="background: var(--primary); color: white;">
+                    <th style="padding: 12px;">Nombre</th>
+                    <th>Teléfono</th>
+                    <th>password</th>
+                    <th>N° Unidad</th>
+                    <th>color Vehiculo</th>
+                    <th>Estado</th>
+                    <th>Último Pago</th>
+                    <th>Suscripción</th>
+                    <th>Viajes</th>
+                    <th>Comisión</th>
+                    <th>Acciones</th>                
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in conductores %}
+                <tr>
+                    <td style="padding: 12px;"><b>{{ c.nombre }}</b></td>
+                    <td>{{ c.telefono }}</td>
+                    <td>{{ c.password }}</td>
+                    <td>{{ c.numero_unidad or '-' }}</td>
+                    <td>{{ c.color_vehiculo or '-' }}</td>
+                    <td>
+                        {% if c.activo == 1 or c.activo == "1" %}
+                            <span class="activo"><i class="fas fa-check"></i> Activo</span>
+                        {% else %}
+                            <span class="bloqueado"><i class="fas fa-ban"></i> Bloqueado</span>
+                        {% endif %}
+                    </td>
+                    <td><small>{{ c.fecha_pago if c.fecha_pago else "Sin registro" }}</small></td>
+                    <td>
+                        {% if c.dias_restantes == "Vencido" %}
+                            <span style="color:var(--danger); font-weight:bold;">Vencido</span>
+                        {% elif c.dias_restantes == "Sin pago" %}
+                            <span style="color:gray;">Sin pago</span>
+                        {% else %}
+                            <span style="color:var(--accent); font-weight:bold;">{{ c.dias_restantes }} días</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="font-weight:bold; color:#2980b9;">{{ c.total_viajes }}</span>
+                    </td>
+                    <td>
+                        <span style="font-weight:bold; color:#27ae60;">${{ c.comision }}</span>
+                    </td>
+                    <td style="display: flex; gap: 5px; justify-content: center;">
+                        <!-- Bloquear / Activar Conductor -->
+                        <a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Cambiar estado?');">
+                            <i class="fas {% if c.activo == 1 or c.activo == '1' %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                        </a>
+                        
+                        <!-- Pago General -->
+                        <a class="btn-pago" href="{{ url_for('pagar_conductor', id=c.id) }}" onclick="return confirm('¿Confirmar pago?');">
+                            <i class="fas fa-dollar-sign"></i>
+                        </a>
+
+                        <!-- Botón de reinicio individual -->
+                        <form action="{{ url_for('procesar_reinicio_conductor', id_conductor=c.id) }}" method="POST" style="display:inline; margin:0; padding:0;" onsubmit="return confirm('¿Confirmar cobro de comisión? El contador de este conductor volverá a cero y se renovarán sus 7 días.');">
+                            <button type="submit" class="btn-pago" style="background: #e67e22; border: none; cursor: pointer; display: inline-block; padding: 8px 12px;">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if conductores|length == 0 %}
+        <p style="text-align:center; padding: 20px; color: #7f8c8d;">No hay conductores registrados.</p>
+    {% endif %}
+</div>
+
+<!-- NUEVA SECCIÓN: CAMBIAR CONTRASEÑA (Separada y bien estilizada al final) -->
+<!-- SECCIÓN: CAMBIAR CONTRASEÑA (Sincronizada con tu app.py) -->
+<div class="card" style="max-width: 1000px; width: 100%; margin: 30px auto auto auto; padding: 20px;">
+    <h3 style="margin-top: 0;"><i class="fas fa-key"></i> Cambiar Contraseña de Administrador</h3>
+    <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
+    
+    <!-- Apunta a cambiar_password que es tu función en Flask -->
+    <form action="{{ url_for('cambiar_password') }}" method="POST" style="max-width: 500px;">
+        <div style="margin-bottom: 15px;">
+            <label for="nueva_password" style="display: block; margin-bottom: 5px; font-weight: bold;">Nueva Contraseña</label>
+            <!-- El name debe ser nueva_password -->
+            <input type="password" id="nueva_password" name="nueva_password" required 
+                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <label for="confirmar_password" style="display: block; margin-bottom: 5px; font-weight: bold;">Confirmar Nueva Contraseña</label>
+            <!-- El name debe ser confirmar_password -->
+            <input type="password" id="confirmar_password" name="confirmar_password" required 
+                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <button type="submit" class="btn-pago" style="border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; background: #3498db;">
+            <i class="fas fa-save"></i> Guardar Nueva Contraseña
+        </button>
+    </form>
+</div>
+
+<script>
+function filtrarTabla() {
+    const filter = document.getElementById("buscador").value.toLowerCase();
+    const rows = document.querySelectorAll("#tablaConductores tbody tr");
+    rows.forEach(row => {
+        const text = row.children[0].textContent + row.children[1].textContent;
+        row.style.display = text.toLowerCase().includes(filter) ? "" : "none";
+    });
+}
+</script>
+
+<style>
+table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+th, td { text-align: center; border-bottom: 1px solid #eee; padding: 10px; }
+.btn-activar, .btn-bloquear, .btn-pago { padding: 8px 12px; border-radius: 5px; color: white; font-size: 12px; text-decoration: none; }
+.btn-activar { background: var(--accent); }
+.btn-bloquear { background: var(--danger); }
+.btn-pago { background: #3498db; }
+.activo { color: var(--accent); font-weight: bold; }
+.bloqueado { color: var(--danger); font-weight: bold; }
+</style>
+{% endblock %}

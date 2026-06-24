@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2 style="text-align: center; color: var(--primary);">Registrar Conductor 🏍️</h2>
+
+    <form method="POST" action="{{ url_for('registro_conductor') }}" autocomplete="off">
+
+        <label style="font-size: 12px; color: #7f8c8d; font-weight: bold;">DATOS PERSONALES</label>
+
+        <input
+            type="text"
+            name="nombre"
+            placeholder="Nombre completo"
+            required
+        >
+
+        <input
+            type="tel"
+            name="telefono"
+            placeholder="Teléfono (10 dígitos)"
+            required
+            pattern="[0-9]{10}"
+            inputmode="numeric"
+        >
+
+        <input
+            type="password"
+            name="password"
+            placeholder="Contraseña (mínimo 4 caracteres)"
+            required
+            minlength="4"
+        >
+
+        <div style="margin: 20px 0; border-top: 2px solid #eee; position: relative;">
+            <span style="position: absolute; top: -10px; left: 10px; background: white; padding: 0 10px; font-size: 12px; color: #7f8c8d; font-weight: bold;">
+                DATOS DE LA UNIDAD
+            </span>
+        </div>
+
+        <input
+            type="text"
+            name="numero_unidad"
+            placeholder="Número de unidad (Ej: M-105)"
+            required
+        >
+
+        <input
+            type="text"
+            name="color_vehiculo"   ✅
+            placeholder="Color de la BICI (Ej: Rojo, Negro, Azul)"
+            required
+        >
+
+        <button type="submit"
+                style="background: var(--accent); color: white; padding: 15px; width: 100%; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; margin-top: 15px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            Finalizar Registro 🚀
+        </button>
+    </form>
+</div>
+
+<style>
+    /* Estilos específicos para este formulario */
+    .card {
+        max-width: 450px;
+        margin: 20px auto;
+        padding: 25px;
+    }
+
+    input {
+        width: 100%;
+        padding: 12px 15px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 16px;
+        transition: border-color 0.3s;
+    }
+
+    input:focus {
+        border-color: var(--primary);
+        outline: none;
+        background-color: #f9f9f9;
+    }
+
+    label {
+        display: block;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}

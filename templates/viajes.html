@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="alerta-viaje" style="display:none; background:#e74c3c; color:white; padding:15px; border-radius:8px; text-align:center; margin-bottom:20px; font-weight:bold; position: sticky; top: 10px; z-index: 1000; box-shadow: 0px 4px 10px rgba(0,0,0,0.2);">
+    ⚠️ ¡HAY UN NUEVO VIAJE DISPONIBLE! 🏍️
+    <br>
+    <button onclick="location.reload()" style="margin-top:10px; padding:8px 15px; border:none; border-radius:5px; background:white; color:#e74c3c; font-weight:bold; cursor:pointer;">
+        VER VIAJES NUEVOS
+    </button>
+</div>
+
+<audio id="sonidoNotificacion" src="{{ url_for('static', filename='sounds/alerta.mp3') }}" preload="auto"></audio>
+
+<div class="container">
+    <h2 style="text-align: center; margin-bottom: 20px;">Viajes Disponibles 🏍️</h2>
+
+    {% if request.args.get('error') %}
+    <div style="background:#fdeaea; color:#e74c3c; padding:12px; border-radius:8px; border:1px solid #f5c6cb; font-weight:bold; text-align:center; margin-bottom:15px;">
+        {{ request.args.get('error') }}
+    </div>
+    {% endif %}
+
+    {% if viaje_activo %}
+        <div class="card" style="padding:20px; border:2px solid #27ae60; margin-bottom:20px;">
+            <h3 style="text-align:center; color:#27ae60;">🚗 Tu viaje actual</h3>
+            <p>
+                <b>Origen:</b> {{ viaje_activo.origen }}<br>
+                <b>Destino:</b> {{ viaje_activo.destino }}<br>
+                <b>Estado:</b> {{ viaje_activo.estado }}
+            </p>
+            <div id="map_activo" style="height:300px; border-radius:10px; margin-bottom:15px;"></div>
+            <a href="{{ url_for('conductor') }}">
+                <button style="width:100%; padding:15px; background:#27ae60; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
+                    Continuar viaje 🚀
+                </button>
+            </a>
+        </div>
+    {% else %}
+        {% if viajes %}
+            {% for viaje in viajes %}
+                <div class="card" style="margin-bottom: 25px; padding: 15px;">
+                    <p style="font-size: 1.1rem; margin-bottom: 10px;">
+                        <b>Recoger en:</b> {{ viaje.origen }}<br>
+                        <b>Destino:</b> {{ viaje.destino }}
+                    </p>
+                    <div id="map_{{ viaje.id }}" style="height: 250px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 15px;"></div>
+                    
+                    <button onclick="aceptarViaje('{{ viaje.id }}')" style="background: #27ae60; color: white; padding: 15px; border: none; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer;">
+                        ACEPTAR VIAJE ✅
+                    </button>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="card" style="text-align: center; padding: 40px;">
+                <p style="color: #7f8c8d;">No hay viajes disponibles 😴</p>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    
+    // 1. MAPA PARA EL VIAJE ACTIVO
+    {% if viaje_activo %}
+    (function() {
+        const latO = {{ viaje_activo.lat or 0 }};
+        const lngO = {{ viaje_activo.lng or 0 }};
+        const latD = {{ viaje_activo.lat_destino or 0 }};
+        const lngD = {{ viaje_activo.lng_destino or 0 }};
+
+        if (latO && lngO && latD && lngD) {
+            const map = L.map('map_activo').setView([latO, lngO], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            L.marker([latO, lngO]).addTo(map).bindPopup("Recoger");
+            L.marker([latD, lngD]).addTo(map).bindPopup("Destino");
+            
+            fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.routes || data.routes.length === 0) return;
+                const coords = data.routes[0].geometry.coordinates;
+                const ruta = coords.map(c => [c[1], c[0]]);
+                const polyline = L.polyline(ruta, {color: '#27ae60', weight: 5}).addTo(map);
+                map.fitBounds(polyline.getBounds());
+            }).catch(()=>{});
+        }
+    })();
+    {% endif %}
+
+    // 2. MAPAS PARA LA LISTA DE VIAJES DISPONIBLES
+    {% if not viaje_activo and viajes %}
+    {% for viaje in viajes %}
+    (function() {
+        const latO = {{ viaje.lat or 0 }};
+        const lngO = {{ viaje.lng or 0 }};
+        const latD = {{ viaje.lat_destino or 0 }};
+        const lngD = {{ viaje.lng_destino or 0 }};
+        const mapId = 'map_{{ viaje.id }}';
+        
+        if (!latO || !lngO || !latD || !lngD) return;
+
+        const map = L.map(mapId, { scrollWheelZoom: false }).setView([latO, lngO], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.marker([latO, lngO]).addTo(map);
+        L.marker([latD, lngD]).addTo(map);
+
+        fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.routes || data.routes.length === 0) return;
+            const coords = data.routes[0].geometry.coordinates;
+            const ruta = coords.map(c => [c[1], c[0]]);
+            const polyline = L.polyline(ruta, {color: 'blue', weight: 4}).addTo(map);
+            map.fitBounds(polyline.getBounds());
+        }).catch(()=>{});
+    })();
+    {% endfor %}
+    {% endif %}
+});
+function aceptarViaje(viajeId) {
+    fetch(`/aceptar_viaje/${viajeId}`, {
+        method: "POST"
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Error HTTP");
+        return res.json();
+    })
+    .then(data => {
+        if (data.status === "ok" || data.status === "OK") {
+            window.location.href = "/conductor";
+        } else {
+            alert("⚠️ " + (data.mensaje || data.message || "No se pudo aceptar"));
+            window.location.reload();
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Error al conectar con el servidor.");
+    });
+}
+
+// 3. FUNCIÓN PARA ACEPTAR VIAJE Y MOSTRAR ALERTA SI YA NO ESTÁ
+
+// 4. LÓGICA DE ALERTA DE NUEVOS VIAJES
+let alertaActiva = false;
+
+function iniciarAlerta() {
+    if (alertaActiva) return;
+    alertaActiva = true;
+    const divAlerta = document.getElementById("alerta-viaje");
+    if (divAlerta) divAlerta.style.display = "block";
+    const sonido = document.getElementById("sonidoNotificacion");
+    if (sonido) {
+        sonido.play().catch(e => console.log("Se requiere interacción para sonido"));
+    }
+}
+
+setInterval(function() {
+    {% if not viaje_activo %}
+    fetch('/api/verificar_viajes')
+    .then(res => res.json())
+    .then(data => {
+        if (data.hay_viajes) {
+            iniciarAlerta();
+        }
+    })
+    .catch(err => console.log("Error al verificar"));
+    {% endif %}
+}, 7000);
+</script>
+{% endblock %}
