@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
@@ -11,17 +12,21 @@
 
 <style>
     .leaflet-routing-container { display: none !important; }
-    .leaflet-control-zoom-in, .leaflet-control-zoom-out {
+
+    .leaflet-control-zoom-in,
+    .leaflet-control-zoom-out {
         width: 44px !important;
         height: 44px !important;
         line-height: 44px !important;
         font-size: 20px !important;
     }
+
     .leaflet-popup-content {
         font-size: 1.1rem !important;
         min-width: 150px !important;
         text-align: center;
     }
+
     .btn-aceptar-mapa {
         background: #27ae60;
         color: white;
@@ -35,6 +40,7 @@
         font-size: 1rem;
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
+
     .leaflet-marker-icon {
         border: none !important;
         background: transparent !important;
@@ -43,12 +49,13 @@
 </style>
 
 <script>
+
 let map;
 let rutasActivas = [];
 let viajeEnCurso = false;
 let idViajeActivo = null;
 
-// Iconos
+// 🔵 ICONOS FIJOS
 const iconVerde = L.icon({
     iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-green.png') }}",
     iconSize: [30, 50],
@@ -63,6 +70,7 @@ const iconRojo = L.icon({
     popupAnchor: [1, -34]
 });
 
+// 🗺️ INIT MAP
 function initMap() {
     map = L.map('map').setView([16.75, -96.67], 13);
 
@@ -76,26 +84,33 @@ function initMap() {
         });
     }
 
-    setTimeout(() => map.invalidateSize(), 600);
+    setTimeout(() => map.invalidateSize(), 500);
 }
 
-// 🔥 POPUP CENTRALIZADO (IMPORTANTE)
-function getPopup(i, v) {
-    if (i === 0) {
-        if (v.id === idViajeActivo && v.estado === 'aceptado') {
-            return `<b>Viaje en Curso 🏍️</b><br>
+// 🟡 POPUP CENTRALIZADO
+function getPopup(v, tipo) {
+
+    if (tipo === "origen") {
+
+        if (v.estado === "aceptado" && v.id === idViajeActivo) {
+            return `<b>Viaje en curso 🏍️</b><br>
                     <a href="/finalizar_viaje/${v.id}" class="btn-aceptar-mapa" style="background:#e74c3c;">
-                    FINALIZAR VIAJE 🏁</a>`;
-        } else {
-            return `<b>Punto de Recogida</b><br>
-                    <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa">
-                    ACEPTAR VIAJE ✅</button>`;
+                        FINALIZAR VIAJE 🏁
+                    </a>`;
         }
+
+        return `<b>Punto de Recogida 🟢</b><br>
+                <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa">
+                    ACEPTAR VIAJE ✅
+                </button>`;
     }
-    return `<b>Destino Final</b>`;
+
+    return `<b>Destino Final 🔴</b>`;
 }
 
+// 🔄 CARGAR VIAJES
 function cargarViajes() {
+
     fetch("/api_viajes")
     .then(res => res.json())
     .then(data => {
@@ -106,49 +121,56 @@ function cargarViajes() {
 
         data.viajes.forEach(v => {
 
-            if (v.lat && v.lng && v.lat_destino && v.lng_destino) {
+            if (!v.lat || !v.lng || !v.lat_destino || !v.lng_destino) return;
 
-                if (viajeEnCurso && v.id !== idViajeActivo) return;
+            if (viajeEnCurso && v.id !== idViajeActivo) return;
 
-                if (v.estado === 'pendiente' ||
-                   (v.estado === 'aceptado' && v.id === idViajeActivo)) {
+            if (v.estado === "pendiente" ||
+                (v.estado === "aceptado" && v.id === idViajeActivo)) {
 
-                    let ruta = L.Routing.control({
-                        waypoints: [
-                            L.latLng(v.lat, v.lng),
-                            L.latLng(v.lat_destino, v.lng_destino)
-                        ],
+                // 🛣️ SOLO LINEA (sin markers del plugin)
+                let ruta = L.Routing.control({
 
-                        // 🔥 AQUÍ ESTÁ LA CORRECCIÓN IMPORTANTE
-                        createMarker: function(i, wp, nWps) {
+                    waypoints: [
+                        L.latLng(v.lat, v.lng),
+                        L.latLng(v.lat_destino, v.lng_destino)
+                    ],
 
-                            let icono = (i === 0) ? iconVerde : iconRojo;
+                    createMarker: function() {
+                        return null; // 🚨 evitamos conflicto de iconos
+                    },
 
-                            return L.marker(wp.latLng, {
-                                icon: icono,
-                                riseOnHover: true
-                            }).bindPopup(getPopup(i, v));
-                        },
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    draggableWaypoints: false,
+                    fitSelectedRoutes: false,
+                    show: false
+                });
 
-                        routeWhileDragging: false,
-                        addWaypoints: false,
-                        draggableWaypoints: false,
-                        fitSelectedRoutes: false,
-                        show: false
-                    });
+                ruta.addTo(map);
+                rutasActivas.push(ruta);
 
-                    ruta.addTo(map);
-                    rutasActivas.push(ruta);
-                }
+                // 🟢 ORIGEN
+                L.marker([v.lat, v.lng], { icon: iconVerde })
+                    .addTo(map)
+                    .bindPopup(getPopup(v, "origen"));
+
+                // 🔴 DESTINO
+                L.marker([v.lat_destino, v.lng_destino], { icon: iconRojo })
+                    .addTo(map)
+                    .bindPopup(getPopup(v, "destino"));
             }
         });
     });
 }
 
+// ✅ ACEPTAR VIAJE
 function aceptarViaje(id) {
+
     fetch(`/aceptar_viaje_ajax/${id}`, { method: "POST" })
     .then(r => r.json())
     .then(data => {
+
         if (data.ok) {
             viajeEnCurso = true;
             idViajeActivo = id;
@@ -159,11 +181,13 @@ function aceptarViaje(id) {
     });
 }
 
-document.addEventListener("DOMContentLoaded", function() {
+// 🚀 INICIO
+document.addEventListener("DOMContentLoaded", function () {
     initMap();
     cargarViajes();
     setInterval(cargarViajes, 15000);
 });
+
 </script>
 
 {% endblock %}
