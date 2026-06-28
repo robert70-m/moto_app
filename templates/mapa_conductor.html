@@ -49,12 +49,12 @@
 let map;
 let rutasActivas = [];
 let viajeEnCurso = false;
-let idViajeActivo = null; // Guardamos el ID del viaje aceptado
+let idViajeActivo = null;
 
-// 🟢 CONFIGURACIÓN DE ICONOS (Tus tamaños originales conservados)
+// 🟢 CONFIGURACIÓN DE ICONOS
 const iconVerde = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-green.png') }}",
+    shadowUrl: "{{ url_for('static', filename='img/marker-shadow.png') }}",
     iconSize: [30, 50],
     iconAnchor: [15, 50], 
     popupAnchor: [1, -34], 
@@ -62,8 +62,8 @@ const iconVerde = L.icon({
 });
 
 const iconRojo = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-red.png') }}",
+    shadowUrl: "{{ url_for('static', filename='img/marker-shadow.png') }}",
     iconSize: [30, 50],
     iconAnchor: [15, 50], 
     popupAnchor: [1, -34], 
@@ -88,20 +88,13 @@ function cargarViajes() {
     fetch("/api_viajes")
     .then(res => res.json())
     .then(data => {
-        // Limpiamos siempre las rutas anteriores antes de redibujar
         rutasActivas.forEach(r => map.removeControl(r));
         rutasActivas = [];
 
         data.viajes.forEach(v => {
-            // Verificación de coordenadas válidas
             if (v.lat && v.lng && v.lat_destino && v.lng_destino) {
-                
-                // SI HAY UN VIAJE EN CURSO: Solo dibujamos la ruta que le corresponde a este conductor
-                if (viajeEnCurso && v.id !== idViajeActivo) {
-                    return; // Ignora los demás viajes pendientes
-                }
+                if (viajeEnCurso && v.id !== idViajeActivo) return;
 
-                // Mostrar viajes pendientes disponibles O el viaje que ya aceptó este conductor
                 if (v.estado === 'pendiente' || (v.estado === 'aceptado' && v.id === idViajeActivo)) {
                     
                     let ruta = L.Routing.control({
@@ -109,12 +102,12 @@ function cargarViajes() {
                             L.latLng(v.lat, v.lng),
                             L.latLng(v.lat_destino, v.lng_destino)
                         ],
-                        createMarker: function(i, wp) {
-                            const icon = (i === 0) ? iconVerde : iconRojo;
+                        // FORZAMOS EL USO DE LOS ICONOS AQUÍ
+                        createMarker: function(i, wp, nWps) {
+                            const markerIcon = (i === 0) ? iconVerde : iconRojo;
                             
                             let popupText = "";
                             if (i === 0) {
-                                // Si el viaje ya está en curso, cambiamos el botón a "Finalizar"
                                 if (v.id === idViajeActivo) {
                                     popupText = `<b>Viaje en Curso 🏍️</b><br>
                                                  <a href="/finalizar_viaje/${v.id}" class="btn-aceptar-mapa" style="background:#e74c3c; text-decoration:none;">
@@ -130,7 +123,7 @@ function cargarViajes() {
                                 popupText = `<b>Destino Final</b>`;
                             }
                             
-                            return L.marker(wp.latLng, { icon: icon }).bindPopup(popupText);
+                            return L.marker(wp.latLng, { icon: markerIcon }).bindPopup(popupText);
                         },
                         addWaypoints: false,
                         draggableWaypoints: false,
@@ -148,31 +141,23 @@ function cargarViajes() {
 }
 
 function aceptarViaje(id) {
-    fetch(`/aceptar_viaje_ajax/${id}`, {
-        method: "POST"
-    })
+    fetch(`/aceptar_viaje_ajax/${id}`, { method: "POST" })
     .then(r => r.json())
     .then(data => {
         if (data.ok) {
             viajeEnCurso = true;
-            idViajeActivo = id; // Guardamos la referencia global
-            alert("Viaje aceptado");
-            cargarViajes(); // Redibuja inmediatamente mostrando solo la línea azul seleccionada
+            idViajeActivo = id;
+            cargarViajes();
         } else {
             alert(data.error || "No se pudo aceptar");
         }
     })
-    .catch(err => {
-        console.error(err);
-        alert("Error de conexión");
-    });
+    .catch(err => console.error(err));
 }
 
 document.addEventListener("DOMContentLoaded", function() {
     initMap();
     cargarViajes();
-    // Refresco automático continuo cada 15 segundos
     setInterval(cargarViajes, 15000);
 });
 </script>
-{% endblock %}
