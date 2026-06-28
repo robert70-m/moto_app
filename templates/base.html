@@ -9,12 +9,17 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
     <meta name="theme-color" content="#2c3e50">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <style>
+<style>
+    /* Forzamos a que Leaflet no use sus filtros predeterminados de color azul */
+    .leaflet-marker-icon {
+        filter: none !important;
+        -webkit-filter: none !important;
+    }
+</style>
+    
         :root {
             --primary: #2c3e50;
             --accent: #27ae60;

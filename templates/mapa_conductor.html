@@ -10,38 +10,35 @@
 </div>
 
 <style>
-    /* Ocultar el panel de instrucciones de ruta */
     .leaflet-routing-container { display: none !important; }
-
-    /* MEJORA MÓVIL: Agrandar botones de zoom de Leaflet */
-    .leaflet-control-zoom-in, 
-    .leaflet-control-zoom-out {
+    .leaflet-control-zoom-in, .leaflet-control-zoom-out {
         width: 44px !important;
         height: 44px !important;
         line-height: 44px !important;
         font-size: 20px !important;
     }
-
-    /* MEJORA MÓVIL: Agrandar el contenido de los popups para que sea legible */
     .leaflet-popup-content {
         font-size: 1.1rem !important;
         min-width: 150px !important;
         text-align: center;
     }
-
-    /* Estilo para el botón de aceptar dentro del mapa */
     .btn-aceptar-mapa {
-        background: #27ae60; 
-        color: white; 
-        padding: 12px; 
-        border-radius: 8px; 
-        display: block; 
-        text-align: center; 
-        margin-top: 10px; 
-        text-decoration: none; 
+        background: #27ae60;
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        display: block;
+        text-align: center;
+        margin-top: 10px;
+        text-decoration: none;
         font-weight: bold;
         font-size: 1rem;
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .leaflet-marker-icon {
+        border: none !important;
+        background: transparent !important;
+        filter: none !important;
     }
 </style>
 
@@ -51,27 +48,24 @@ let rutasActivas = [];
 let viajeEnCurso = false;
 let idViajeActivo = null;
 
-// 🟢 CONFIGURACIÓN DE ICONOS
+// Iconos
 const iconVerde = L.icon({
     iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-green.png') }}",
-    shadowUrl: "{{ url_for('static', filename='img/marker-shadow.png') }}",
     iconSize: [30, 50],
-    iconAnchor: [15, 50], 
-    popupAnchor: [1, -34], 
-    shadowSize: [41, 41]
+    iconAnchor: [15, 50],
+    popupAnchor: [1, -34]
 });
 
 const iconRojo = L.icon({
     iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-red.png') }}",
-    shadowUrl: "{{ url_for('static', filename='img/marker-shadow.png') }}",
     iconSize: [30, 50],
-    iconAnchor: [15, 50], 
-    popupAnchor: [1, -34], 
-    shadowSize: [41, 41]
+    iconAnchor: [15, 50],
+    popupAnchor: [1, -34]
 });
 
 function initMap() {
     map = L.map('map').setView([16.75, -96.67], 13);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
@@ -81,58 +75,69 @@ function initMap() {
             map.setView([pos.coords.latitude, pos.coords.longitude], 14);
         });
     }
+
     setTimeout(() => map.invalidateSize(), 600);
+}
+
+// 🔥 POPUP CENTRALIZADO (IMPORTANTE)
+function getPopup(i, v) {
+    if (i === 0) {
+        if (v.id === idViajeActivo && v.estado === 'aceptado') {
+            return `<b>Viaje en Curso 🏍️</b><br>
+                    <a href="/finalizar_viaje/${v.id}" class="btn-aceptar-mapa" style="background:#e74c3c;">
+                    FINALIZAR VIAJE 🏁</a>`;
+        } else {
+            return `<b>Punto de Recogida</b><br>
+                    <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa">
+                    ACEPTAR VIAJE ✅</button>`;
+        }
+    }
+    return `<b>Destino Final</b>`;
 }
 
 function cargarViajes() {
     fetch("/api_viajes")
     .then(res => res.json())
     .then(data => {
+
+        // limpiar rutas anteriores
         rutasActivas.forEach(r => map.removeControl(r));
         rutasActivas = [];
 
         data.viajes.forEach(v => {
+
             if (v.lat && v.lng && v.lat_destino && v.lng_destino) {
+
                 if (viajeEnCurso && v.id !== idViajeActivo) return;
 
-                if (v.estado === 'pendiente' || (v.estado === 'aceptado' && v.id === idViajeActivo)) {
-                    
+                if (v.estado === 'pendiente' ||
+                   (v.estado === 'aceptado' && v.id === idViajeActivo)) {
+
                     let ruta = L.Routing.control({
                         waypoints: [
                             L.latLng(v.lat, v.lng),
                             L.latLng(v.lat_destino, v.lng_destino)
                         ],
-                        // FORZAMOS EL USO DE LOS ICONOS AQUÍ
+
+                        // 🔥 AQUÍ ESTÁ LA CORRECCIÓN IMPORTANTE
                         createMarker: function(i, wp, nWps) {
-                            const markerIcon = (i === 0) ? iconVerde : iconRojo;
-                            
-                            let popupText = "";
-                            if (i === 0) {
-                                if (v.id === idViajeActivo) {
-                                    popupText = `<b>Viaje en Curso 🏍️</b><br>
-                                                 <a href="/finalizar_viaje/${v.id}" class="btn-aceptar-mapa" style="background:#e74c3c; text-decoration:none;">
-                                                     FINALIZAR VIAJE 🏁
-                                                 </a>`;
-                                } else {
-                                    popupText = `<b>Punto de Recogida</b><br>
-                                                 <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa" style="border:none; width:100%; cursor:pointer;">
-                                                     ACEPTAR VIAJE ✅
-                                                 </button>`;
-                                }
-                            } else {
-                                popupText = `<b>Destino Final</b>`;
-                            }
-                            
-                            return L.marker(wp.latLng, { icon: markerIcon }).bindPopup(popupText);
+
+                            let icono = (i === 0) ? iconVerde : iconRojo;
+
+                            return L.marker(wp.latLng, {
+                                icon: icono,
+                                riseOnHover: true
+                            }).bindPopup(getPopup(i, v));
                         },
+
+                        routeWhileDragging: false,
                         addWaypoints: false,
                         draggableWaypoints: false,
-                        show: false,
-                        lineOptions: {
-                            styles: [{ color: '#3498db', opacity: 0.8, weight: 6 }]
-                        }
-                    }).addTo(map);
+                        fitSelectedRoutes: false,
+                        show: false
+                    });
 
+                    ruta.addTo(map);
                     rutasActivas.push(ruta);
                 }
             }
@@ -151,8 +156,7 @@ function aceptarViaje(id) {
         } else {
             alert(data.error || "No se pudo aceptar");
         }
-    })
-    .catch(err => console.error(err));
+    });
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -161,3 +165,5 @@ document.addEventListener("DOMContentLoaded", function() {
     setInterval(cargarViajes, 15000);
 });
 </script>
+
+{% endblock %}
