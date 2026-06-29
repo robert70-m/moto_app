@@ -4,9 +4,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
-<audio id="sonidoNotificacion"
-src="{{ url_for('static', filename='notificacion.mp3') }}"
-preload="auto"></audio>
+<audio id="sonidoNotificacion" src="{{ url_for('static', filename='notificacion.mp3') }}" preload="auto"></audio>
 
 <div class="card" style="text-align:center;padding:15px;margin-bottom:10px;">
 
@@ -16,121 +14,56 @@ preload="auto"></audio>
 
     <p style="margin:8px 0;">
         Estado:
-        <strong id="status-text"
-        style="font-size:1.2rem;color:#27ae60;">
+        <strong id="status-text" style="font-size:1.2rem;color:#27ae60;">
             En línea 🟢
         </strong>
     </p>
 
-    <!-- NUEVO CONTADOR -->
-    <div style="background:#f4f6f7;
-                padding:12px;
-                border-radius:10px;
-                margin:10px 0;
-                font-size:1.1rem;">
+    <div style="background:#f4f6f7; padding:12px; border-radius:10px; margin:10px 0; font-size:1.1rem;">
         🏁 Viajes realizados:
         <strong style="color:#27ae60;">
             {{ total_viajes }}
         </strong>
     </div>
 
-    <a href="{{ url_for('viajes_disponibles') }}"
-       style="text-decoration:none;">
-
-        <button style="
-            background:#3498db;
-            width:100%;
-            padding:15px;
-            border:none;
-            color:white;
-            border-radius:10px;
-            font-weight:bold;
-            font-size:1.1rem;
-            cursor:pointer;
-            box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-
+    <a href="{{ url_for('viajes_disponibles') }}" style="text-decoration:none;">
+        <button style="background:#3498db; width:100%; padding:15px; border:none; color:white; border-radius:10px; font-weight:bold; font-size:1.1rem; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
             🔎 Ver Viajes Disponibles
         </button>
     </a>
 </div>
 
-<div id="alerta-viaje"
-     class="alerta-viaje"
-     style="display:none;"
-     onclick="detenerAlerta()">
-
+<div id="alerta-viaje" class="alerta-viaje" style="display:none;" onclick="detenerAlerta()">
     🚨 NUEVO VIAJE DISPONIBLE 🚨
     (Toca para silenciar)
 </div>
 
-<div id="contenedor-viaje-activo"
-     class="card"
-     style="padding:10px;margin-bottom:20px;">
+<div id="contenedor-viaje-activo" class="card" style="padding:10px;margin-bottom:20px;">
 
     <h3 style="text-align:center;margin-top:5px;">
         Control de Viaje Activo
     </h3>
 
     {% if viaje %}
-        <div id="map_conductor"
-             style="
-                height:50vh;
-                width:100%;
-                border-radius:10px;
-                margin-bottom:15px;
-                border:1px solid #ddd;
-                z-index:1;">
-        </div>
+        <div id="map_conductor" style="height:50vh; width:100%; border-radius:10px; margin-bottom:15px; border:1px solid #ddd; z-index:1;"></div>
     {% else %}
-        <div id="sin-viaje-msg"
-             style="
-                text-align:center;
-                padding:50px;
-                background:#f9f9f9;
-                border-radius:10px;
-                color:#95a5a6;
-                font-style:italic;">
-
+        <div id="sin-viaje-msg" style="text-align:center; padding:50px; background:#f9f9f9; border-radius:10px; color:#95a5a6; font-style:italic;">
             No hay viaje activo.
             Ve a "Ver Mandados Disponibles".
         </div>
     {% endif %}
 
-    <div id="botones-control"
-         style="
-            flex-direction:column;
-            gap:12px;
-            {% if not viaje %}
-            display:none;
-            {% else %}
-            display:flex;
-            {% endif %}
-         ">
+    <div id="botones-control" style="flex-direction:column; gap:12px; {% if not viaje %}display:none;{% else %}display:flex;{% endif %}">
 
-        <button class="btn-estado"
-                id="btn-en-camino"
-                onclick="actualizarEstado('en_camino','{{ viaje.id if viaje else '' }}')"
-                {% if not viaje or viaje.estado != 'aceptado' %}disabled{% endif %}
-                style="background:#f39c12;">
-
+        <button class="btn-estado" id="btn-en-camino" onclick="actualizarEstado('en_camino','{{ viaje.id if viaje else '' }}')" {% if not viaje or viaje.estado != 'aceptado' %}disabled{% endif %} style="background:#f39c12;">
             1. En Camino al Cliente 🚲
         </button>
 
-        <button class="btn-estado"
-                id="btn-recogido"
-                onclick="actualizarEstado('recogido','{{ viaje.id if viaje else '' }}')"
-                {% if not viaje or (viaje.estado != 'en_camino' and viaje.estado != 'aceptado') %}disabled{% endif %}
-                style="background:#2980b9;">
-
+        <button class="btn-estado" id="btn-recogido" onclick="actualizarEstado('recogido','{{ viaje.id if viaje else '' }}')" {% if not viaje or (viaje.estado != 'en_camino' and viaje.estado != 'aceptado') %}disabled{% endif %} style="background:#2980b9;">
             2. Cliente recogido ✅
         </button>
 
-        <button class="btn-estado"
-                id="btn-finalizado"
-                onclick="actualizarEstado('finalizado','{{ viaje.id if viaje else '' }}')"
-                {% if not viaje or (viaje.estado != 'recogido' and viaje.estado != 'en_camino') %}disabled{% endif %}
-                style="background:#27ae60;">
-
+        <button class="btn-estado" id="btn-finalizado" onclick="actualizarEstado('finalizado','{{ viaje.id if viaje else '' }}')" {% if not viaje or (viaje.estado != 'recogido' and viaje.estado != 'en_camino') %}disabled{% endif %} style="background:#27ae60;">
             3. Finalizar y Cobrar 🏁
         </button>
     </div>
@@ -181,7 +114,6 @@ preload="auto"></audio>
 </style>
 
 <script>
-// Función actualizar estado
 function actualizarEstado(nuevoEstado, viajeId){
     if(!viajeId || viajeId==="") return;
 
@@ -241,28 +173,30 @@ document.addEventListener("DOMContentLoaded",function(){
 
     if(latO && lngO && latD && lngD){
 
-        // Inicializamos el mapa centrado temporalmente en el origen
         map = L.map('map_conductor').setView([latO, lngO], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Creamos la ruta en el mapa conectando origen y destino con Leaflet Routing Machine
         L.Routing.control({
             waypoints: [
                 L.latLng(latO, lngO),
                 L.latLng(latD, lngD)
             ],
             createMarker: function(i, wp) {
-                // i === 0 es Origen (Recogida), i === 1 es el Destino final
-                const iconoText = (i === 0) ? "Punto de Recogida" : "Destino Final";
-                const iconoColor = (i === 0) ? iconVerde : iconRojo;
-                return L.marker(wp.latLng, { icon: iconoColor }).bindPopup(`<b>${iconoText}</b>`);
+                // CORREGIDO: Renombrado de variables y forzado de clase CSS para el icono personalizado
+                const iconoText = (i === 0) ? "Punto de Recogida (Origen) 🟢" : "Destino Final 🔴";
+                const miIcono = (i === 0) ? iconVerde : iconRojo;
+                
+                return L.marker(wp.latLng, { 
+                    icon: miIcono,
+                    className: 'leaflet-marker-icon'
+                }).bindPopup(`<b>${iconoText}</b>`);
             },
             addWaypoints: false,
             draggableWaypoints: false,
-            show: false, // Oculta el cuadro de texto con las instrucciones de calles
+            show: false, 
             lineOptions: {
                 styles: [{ color: '#3498db', opacity: 0.8, weight: 6 }]
             }
@@ -307,7 +241,6 @@ setInterval(function(){
 fetch('/api_verificar_status_viaje/{{ viaje.id }}')
 .then(r=>r.json())
 .then(data=>{
-
     if(data.estado==='cancelado'){
         alert("Cliente canceló viaje");
         window.location.replace("/viajes_disponibles");

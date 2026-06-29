@@ -55,27 +55,7 @@
         {% endif %}
     {% endif %}
 </div>
-
 <script>
-
-const iconVerde = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-const iconRojo = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
 document.addEventListener("DOMContentLoaded", function() {
     
     // 1. MAPA PARA EL VIAJE ACTIVO
@@ -89,13 +69,29 @@ document.addEventListener("DOMContentLoaded", function() {
         if (latO && lngO && latD && lngD) {
             const map = L.map('map_activo').setView([latO, lngO], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-           L.marker([latO, lngO], { icon: iconVerde })
-    .addTo(map)
-    .bindPopup("📍 Recoger al cliente");
+            
+            // Declaración local exacta para el mapa activo
+            const iconVerde = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
 
-L.marker([latD, lngD], { icon: iconRojo })
-    .addTo(map)
-    .bindPopup("🏁 Destino");
+            const iconRojo = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
+            L.marker([latO, lngO], { icon: iconVerde }).addTo(map).bindPopup("📍 Recoger al cliente");
+            L.marker([latD, lngD], { icon: iconRojo }).addTo(map).bindPopup("🏁 Destino");
+
             fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
             .then(res => res.json())
             .then(data => {
@@ -123,8 +119,29 @@ L.marker([latD, lngD], { icon: iconRojo })
 
         const map = L.map(mapId, { scrollWheelZoom: false }).setView([latO, lngO], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        L.marker([latO, lngO]).addTo(map);
-        L.marker([latD, lngD]).addTo(map);
+        
+        // CREACIÓN INDEPENDIENTE POR CADA VIAJE DENTRO DEL BUCLE
+        const mVerde = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const mRojo = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        // Aplicamos las constantes locales únicas de este bloque
+        L.marker([latO, lngO], { icon: mVerde }).addTo(map).bindPopup("🟢 Punto de Recogida");
+        L.marker([latD, lngD], { icon: mRojo }).addTo(map).bindPopup("🔴 Destino Final");
 
         fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
         .then(res => res.json())
@@ -139,6 +156,7 @@ L.marker([latD, lngD], { icon: iconRojo })
     {% endfor %}
     {% endif %}
 });
+
 function aceptarViaje(viajeId) {
     fetch(`/aceptar_viaje/${viajeId}`, {
         method: "POST"
@@ -161,9 +179,6 @@ function aceptarViaje(viajeId) {
     });
 }
 
-// 3. FUNCIÓN PARA ACEPTAR VIAJE Y MOSTRAR ALERTA SI YA NO ESTÁ
-
-// 4. LÓGICA DE ALERTA DE NUEVOS VIAJES
 let alertaActiva = false;
 
 function iniciarAlerta() {

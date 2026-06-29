@@ -109,7 +109,8 @@ function cargarViajes() {
                             L.latLng(v.lat_destino, v.lng_destino)
                         ],
                         createMarker: function(i, wp) {
-                            const icon = (i === 0) ? iconVerde : iconRojo;
+                            // CORREGIDO: Cambiado de 'icon' a 'miIcono' para evitar colisiones con Leaflet
+                            const miIcono = (i === 0) ? iconVerde : iconRojo;
                             
                             let popupText = "";
                             if (i === 0) {
@@ -119,16 +120,20 @@ function cargarViajes() {
                                                      FINALIZAR VIAJE 🏁
                                                  </a>`;
                                 } else {
-                                    popupText = `<b>Punto de Recogida</b><br>
+                                    popupText = `<b>Punto de Recogida 🟢</b><br>
                                                  <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa" style="border:none; width:100%; cursor:pointer;">
                                                      ACEPTAR VIAJE ✅
                                                  </button>`;
                                 }
                             } else {
-                                popupText = `<b>Destino Final</b>`;
+                                popupText = `<b>Destino Final 🔴</b>`;
                             }
                             
-                            return L.marker(wp.latLng, { icon: icon }).bindPopup(popupText);
+                            // CORREGIDO: Se forzó el uso del icono renombrado y su clase CSS respectiva
+                            return L.marker(wp.latLng, { 
+                                icon: miIcono,
+                                className: 'leaflet-marker-icon'
+                            }).bindPopup(popupText);
                         },
                         addWaypoints: false,
                         draggableWaypoints: false,
