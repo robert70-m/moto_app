@@ -534,21 +534,37 @@ def admin():
     conn.close()
     return render_template("admin.html", conductores=lista)
 
-@app.route("/admin/reset_viajes_conductor/<int:conductor_id>", methods=["POST"])
-def reiniciar_contador_conductor(conductor_id):
+# Cambiamos la URL para que use "procesar_reinicio_conductor" igual que la función y tu HTML:
+@app.route("/admin/procesar_reinicio_conductor/<int:id_conductor>", methods=["POST"])
+def procesar_reinicio_conductor(id_conductor):
     if session.get("tipo") != "admin":
         return "Acceso denegado", 403
 
     hoy_str = datetime.now().strftime("%Y-%m-%d")
     conn = get_db()
+
     try:
-        conn.execute("UPDATE viajes SET comision_pagada = 1 WHERE conductor_id = ? AND estado = 'finalizado'", (conductor_id,))
-        conn.execute("UPDATE usuarios SET activo = 1, fecha_pago = ? WHERE id = ?", (hoy_str, conductor_id))
+        # 1. Marcamos todos sus viajes finalizados actuales como pagados
+        conn.execute("""
+            UPDATE viajes 
+            SET comision_pagada = 1 
+            WHERE conductor_id = ? AND estado = 'finalizado'
+        """, (id_conductor,))
+
+        # 2. Le renovamos sus 7 días de suscripción poniéndole la fecha de hoy
+        conn.execute("""
+            UPDATE usuarios 
+            SET activo = 1, fecha_pago = ? 
+            WHERE id = ?
+        """, (hoy_str, id_conductor))
+
         conn.commit()
     except Exception as e:
         conn.rollback()
+        print(f"Error al reiniciar viajes: {e}")
     finally:
         conn.close()
+
     return redirect(url_for("admin"))
 
 @app.route('/pagar_conductor/<int:id>')
