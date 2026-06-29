@@ -10,16 +10,17 @@
     <meta name="theme-color" content="#2c3e50">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<style>
-    /* Forzamos a que Leaflet no use sus filtros predeterminados de color azul */
-    .leaflet-marker-icon {
-        filter: none !important;
-        -webkit-filter: none !important;
-    }
-</style>
+    <style>
+        /* Forzamos a que Leaflet no use sus filtros predeterminados de color azul */
+        .leaflet-marker-icon {
+            filter: none !important;
+            -webkit-filter: none !important;
+        }
+    </style>
     
+    <style>
         :root {
             --primary: #2c3e50;
             --accent: #27ae60;
@@ -173,8 +174,6 @@
 <footer class="main-footer">
     <div>© copy Right 2026 Moto App</div>
     <div style="font-weight: bold;">Desarrollado por Roberto Hdz.</div>
-   
-
 </footer>
 
 <script>

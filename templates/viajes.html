@@ -57,6 +57,25 @@
 </div>
 
 <script>
+
+const iconVerde = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+const iconRojo = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
 document.addEventListener("DOMContentLoaded", function() {
     
     // 1. MAPA PARA EL VIAJE ACTIVO
@@ -70,9 +89,13 @@ document.addEventListener("DOMContentLoaded", function() {
         if (latO && lngO && latD && lngD) {
             const map = L.map('map_activo').setView([latO, lngO], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            L.marker([latO, lngO]).addTo(map).bindPopup("Recoger");
-            L.marker([latD, lngD]).addTo(map).bindPopup("Destino");
-            
+           L.marker([latO, lngO], { icon: iconVerde })
+    .addTo(map)
+    .bindPopup("📍 Recoger al cliente");
+
+L.marker([latD, lngD], { icon: iconRojo })
+    .addTo(map)
+    .bindPopup("🏁 Destino");
             fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
             .then(res => res.json())
             .then(data => {

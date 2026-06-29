@@ -1,6 +1,41 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    /* Ocultar el panel de instrucciones de ruta */
+    .leaflet-routing-container { display: none !important; }
+
+    /* MEJORA MÓVIL: Agrandar botones de zoom de Leaflet */
+    .leaflet-control-zoom-in, 
+    .leaflet-control-zoom-out {
+        width: 44px !important;
+        height: 44px !important;
+        line-height: 44px !important;
+        font-size: 20px !important;
+    }
+
+    /* MEJORA MÓVIL: Agrandar el contenido de los popups para que sea legible */
+    .leaflet-popup-content {
+        font-size: 1.1rem !important;
+        min-width: 150px !important;
+        text-align: center;
+    }
+
+    /* Estilo para el botón de aceptar dentro del mapa */
+    .btn-aceptar-mapa {
+        background: #27ae60; 
+        color: white; 
+        padding: 12px; 
+        border-radius: 8px; 
+        display: block; 
+        text-align: center; 
+        margin-top: 10px; 
+        text-decoration: none; 
+        font-weight: bold;
+        font-size: 1rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+</style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
@@ -10,70 +45,33 @@
     <div id="map" style="flex-grow: 1; border-radius: 10px; z-index: 1;"></div>
 </div>
 
-<style>
-    .leaflet-routing-container { display: none !important; }
-
-    .leaflet-control-zoom-in,
-    .leaflet-control-zoom-out {
-        width: 44px !important;
-        height: 44px !important;
-        line-height: 44px !important;
-        font-size: 20px !important;
-    }
-
-    .leaflet-popup-content {
-        font-size: 1.1rem !important;
-        min-width: 150px !important;
-        text-align: center;
-    }
-
-    .btn-aceptar-mapa {
-        background: #27ae60;
-        color: white;
-        padding: 12px;
-        border-radius: 8px;
-        display: block;
-        text-align: center;
-        margin-top: 10px;
-        text-decoration: none;
-        font-weight: bold;
-        font-size: 1rem;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-
-    .leaflet-marker-icon {
-        border: none !important;
-        background: transparent !important;
-        filter: none !important;
-    }
-</style>
-
 <script>
-
 let map;
 let rutasActivas = [];
 let viajeEnCurso = false;
-let idViajeActivo = null;
+let idViajeActivo = null; // Guardamos el ID del viaje aceptado
 
-// 🔵 ICONOS FIJOS
+// 🟢 CONFIGURACIÓN DE ICONOS
 const iconVerde = L.icon({
-    iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-green.png') }}",
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
     iconSize: [30, 50],
-    iconAnchor: [15, 50],
-    popupAnchor: [1, -34]
+    iconAnchor: [15, 50], 
+    popupAnchor: [1, -34], 
+    shadowSize: [41, 41]
 });
 
 const iconRojo = L.icon({
-    iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-red.png') }}",
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
     iconSize: [30, 50],
-    iconAnchor: [15, 50],
-    popupAnchor: [1, -34]
+    iconAnchor: [15, 50], 
+    popupAnchor: [1, -34], 
+    shadowSize: [41, 41]
 });
 
-// 🗺️ INIT MAP
 function initMap() {
     map = L.map('map').setView([16.75, -96.67], 13);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
@@ -83,111 +81,95 @@ function initMap() {
             map.setView([pos.coords.latitude, pos.coords.longitude], 14);
         });
     }
-
-    setTimeout(() => map.invalidateSize(), 500);
+    setTimeout(() => map.invalidateSize(), 600);
 }
 
-// 🟡 POPUP CENTRALIZADO
-function getPopup(v, tipo) {
-
-    if (tipo === "origen") {
-
-        if (v.estado === "aceptado" && v.id === idViajeActivo) {
-            return `<b>Viaje en curso 🏍️</b><br>
-                    <a href="/finalizar_viaje/${v.id}" class="btn-aceptar-mapa" style="background:#e74c3c;">
-                        FINALIZAR VIAJE 🏁
-                    </a>`;
-        }
-
-        return `<b>Punto de Recogida 🟢</b><br>
-                <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa">
-                    ACEPTAR VIAJE ✅
-                </button>`;
-    }
-
-    return `<b>Destino Final 🔴</b>`;
-}
-
-// 🔄 CARGAR VIAJES
 function cargarViajes() {
-
     fetch("/api_viajes")
     .then(res => res.json())
     .then(data => {
-
-        // limpiar rutas anteriores
+        // Limpiamos siempre las rutas anteriores antes de redibujar
         rutasActivas.forEach(r => map.removeControl(r));
         rutasActivas = [];
 
         data.viajes.forEach(v => {
+            if (v.lat && v.lng && v.lat_destino && v.lng_destino) {
+                
+                // SI HAY UN VIAJE EN CURSO: Solo dibujamos la ruta que le corresponde a este conductor
+                if (viajeEnCurso && v.id !== idViajeActivo) {
+                    return; 
+                }
 
-            if (!v.lat || !v.lng || !v.lat_destino || !v.lng_destino) return;
+                // Mostrar viajes pendientes disponibles O el viaje que ya aceptó este conductor
+                if (v.estado === 'pendiente' || (v.estado === 'aceptado' && v.id === idViajeActivo)) {
+                    
+                    let ruta = L.Routing.control({
+                        waypoints: [
+                            L.latLng(v.lat, v.lng),
+                            L.latLng(v.lat_destino, v.lng_destino)
+                        ],
+                        createMarker: function(i, wp) {
+                            const icon = (i === 0) ? iconVerde : iconRojo;
+                            
+                            let popupText = "";
+                            if (i === 0) {
+                                if (v.id === idViajeActivo) {
+                                    popupText = `<b>Viaje en Curso 🏍️</b><br>
+                                                 <a href="/finalizar_viaje/${v.id}" class="btn-aceptar-mapa" style="background:#e74c3c; text-decoration:none;">
+                                                     FINALIZAR VIAJE 🏁
+                                                 </a>`;
+                                } else {
+                                    popupText = `<b>Punto de Recogida</b><br>
+                                                 <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa" style="border:none; width:100%; cursor:pointer;">
+                                                     ACEPTAR VIAJE ✅
+                                                 </button>`;
+                                }
+                            } else {
+                                popupText = `<b>Destino Final</b>`;
+                            }
+                            
+                            return L.marker(wp.latLng, { icon: icon }).bindPopup(popupText);
+                        },
+                        addWaypoints: false,
+                        draggableWaypoints: false,
+                        show: false,
+                        lineOptions: {
+                            styles: [{ color: '#3498db', opacity: 0.8, weight: 6 }]
+                        }
+                    }).addTo(map);
 
-            if (viajeEnCurso && v.id !== idViajeActivo) return;
-
-            if (v.estado === "pendiente" ||
-                (v.estado === "aceptado" && v.id === idViajeActivo)) {
-
-                // 🛣️ SOLO LINEA (sin markers del plugin)
-                let ruta = L.Routing.control({
-
-                    waypoints: [
-                        L.latLng(v.lat, v.lng),
-                        L.latLng(v.lat_destino, v.lng_destino)
-                    ],
-
-                    createMarker: function() {
-                        return null; // 🚨 evitamos conflicto de iconos
-                    },
-
-                    routeWhileDragging: false,
-                    addWaypoints: false,
-                    draggableWaypoints: false,
-                    fitSelectedRoutes: false,
-                    show: false
-                });
-
-                ruta.addTo(map);
-                rutasActivas.push(ruta);
-
-                // 🟢 ORIGEN
-                L.marker([v.lat, v.lng], { icon: iconVerde })
-                    .addTo(map)
-                    .bindPopup(getPopup(v, "origen"));
-
-                // 🔴 DESTINO
-                L.marker([v.lat_destino, v.lng_destino], { icon: iconRojo })
-                    .addTo(map)
-                    .bindPopup(getPopup(v, "destino"));
+                    rutasActivas.push(ruta);
+                }
             }
         });
     });
 }
 
-// ✅ ACEPTAR VIAJE
 function aceptarViaje(id) {
-
-    fetch(`/aceptar_viaje_ajax/${id}`, { method: "POST" })
+    fetch(`/aceptar_viaje_ajax/${id}`, {
+        method: "POST"
+    })
     .then(r => r.json())
     .then(data => {
-
         if (data.ok) {
             viajeEnCurso = true;
-            idViajeActivo = id;
-            cargarViajes();
+            idViajeActivo = id; 
+            alert("Viaje aceptado");
+            cargarViajes(); 
         } else {
             alert(data.error || "No se pudo aceptar");
         }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Error de conexión");
     });
 }
 
-// 🚀 INICIO
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", function() {
     initMap();
     cargarViajes();
     setInterval(cargarViajes, 15000);
 });
-
 </script>
-
 {% endblock %}

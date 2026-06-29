@@ -1,92 +1,163 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-    <h2 style="text-align: center; color: var(--primary);">Registrar Conductor 🏍️</h2>
 
-    <form method="POST" action="{{ url_for('registro_conductor') }}" autocomplete="off">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
-        <label style="font-size: 12px; color: #7f8c8d; font-weight: bold;">DATOS PERSONALES</label>
-
-        <input
-            type="text"
-            name="nombre"
-            placeholder="Nombre completo"
-            required
-        >
-
-        <input
-            type="tel"
-            name="telefono"
-            placeholder="Teléfono (10 dígitos)"
-            required
-            pattern="[0-9]{10}"
-            inputmode="numeric"
-        >
-
-        <input
-            type="password"
-            name="password"
-            placeholder="Contraseña (mínimo 4 caracteres)"
-            required
-            minlength="4"
-        >
-
-        <div style="margin: 20px 0; border-top: 2px solid #eee; position: relative;">
-            <span style="position: absolute; top: -10px; left: 10px; background: white; padding: 0 10px; font-size: 12px; color: #7f8c8d; font-weight: bold;">
-                DATOS DE LA UNIDAD
-            </span>
-        </div>
-
-        <input
-            type="text"
-            name="numero_unidad"
-            placeholder="Número de unidad (Ej: M-105)"
-            required
-        >
-
-        <input
-            type="text"
-            name="color_vehiculo"   ✅
-            placeholder="Color de la BICI (Ej: Rojo, Negro, Azul)"
-            required
-        >
-
-        <button type="submit"
-                style="background: var(--accent); color: white; padding: 15px; width: 100%; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; margin-top: 15px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            Finalizar Registro 🚀
-        </button>
-    </form>
+<div class="card" style="height: 85vh; display: flex; flex-direction: column; padding: 5px; margin-bottom: 10px;">
+    <h3 style="text-align: center; margin: 10px 0; font-size: 1.4rem;">Viajes en tiempo real 🏍️</h3>
+    <div id="map" style="flex-grow: 1; border-radius: 10px;"></div>
 </div>
 
 <style>
-    /* Estilos específicos para este formulario */
-    .card {
-        max-width: 450px;
-        margin: 20px auto;
-        padding: 25px;
-    }
+    .leaflet-routing-container { display: none !important; }
 
-    input {
-        width: 100%;
-        padding: 12px 15px;
-        margin: 10px 0;
-        border: 1px solid #ddd;
+    .btn-aceptar-mapa {
+        background: #27ae60;
+        color: white;
+        padding: 10px;
         border-radius: 8px;
-        box-sizing: border-box;
-        font-size: 16px;
-        transition: border-color 0.3s;
-    }
-
-    input:focus {
-        border-color: var(--primary);
-        outline: none;
-        background-color: #f9f9f9;
-    }
-
-    label {
         display: block;
-        margin-top: 10px;
+        text-align: center;
+        margin-top: 8px;
+        text-decoration: none;
+        font-weight: bold;
     }
 </style>
+
+<script>
+
+let map;
+let rutas = [];
+let markersLayer;
+let viajeEnCurso = false;
+let idViajeActivo = null;
+
+// 🟢 ICONOS FIJOS (NO CAMBIAN)
+const iconVerde = L.icon({
+    iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-green.png') }}",
+    iconSize: [30, 50],
+    iconAnchor: [15, 50]
+});
+
+const iconRojo = L.icon({
+    iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-red.png') }}",
+    iconSize: [30, 50],
+    iconAnchor: [15, 50]
+});
+
+// 🗺️ INIT MAP
+function initMap() {
+    map = L.map('map').setView([16.75, -96.67], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    markersLayer = L.layerGroup().addTo(map);
+
+    setTimeout(() => map.invalidateSize(), 500);
+}
+
+// 🟡 POPUP
+function popupOrigen(v) {
+
+    if (v.estado === "aceptado" && v.id === idViajeActivo) {
+        return `
+            <b>Viaje en curso 🏍️</b><br>
+            <a href="/finalizar_viaje/${v.id}" class="btn-aceptar-mapa" style="background:red;">
+                FINALIZAR
+            </a>
+        `;
+    }
+
+    return `
+        <b>Punto de recogida 🟢</b><br>
+        <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa">
+            ACEPTAR
+        </button>
+    `;
+}
+
+function popupDestino() {
+    return `<b>Destino final 🔴</b>`;
+}
+
+// 🔄 CARGAR VIAJES
+function cargarViajes() {
+
+    fetch("/api_viajes")
+    .then(r => r.json())
+    .then(data => {
+
+        // 🧹 LIMPIAR TODO
+        markersLayer.clearLayers();
+        rutas.forEach(r => map.removeControl(r));
+        rutas = [];
+
+        data.viajes.forEach(v => {
+
+            if (!v.lat || !v.lng || !v.lat_destino || !v.lng_destino) return;
+
+            if (viajeEnCurso && v.id !== idViajeActivo) return;
+
+            if (v.estado === "pendiente" ||
+               (v.estado === "aceptado" && v.id === idViajeActivo)) {
+
+                // 🛣️ SOLO RUTA
+                let ruta = L.Routing.control({
+                    waypoints: [
+                        L.latLng(v.lat, v.lng),
+                        L.latLng(v.lat_destino, v.lng_destino)
+                    ],
+                    createMarker: () => null,
+                    addWaypoints: false,
+                    draggableWaypoints: false,
+                    fitSelectedRoutes: false,
+                    show: false
+                }).addTo(map);
+
+                rutas.push(ruta);
+
+                // 🟢 ORIGEN (SIEMPRE VERDE)
+                L.marker([v.lat, v.lng], { icon: iconVerde })
+                    .bindPopup(popupOrigen(v))
+                    .addTo(markersLayer);
+
+                // 🔴 DESTINO (SIEMPRE ROJO)
+                L.marker([v.lat_destino, v.lng_destino], { icon: iconRojo })
+                    .bindPopup(popupDestino())
+                    .addTo(markersLayer);
+            }
+        });
+    });
+}
+
+// ✅ ACEPTAR VIAJE
+function aceptarViaje(id) {
+
+    fetch(`/aceptar_viaje_ajax/${id}`, { method: "POST" })
+    .then(r => r.json())
+    .then(data => {
+
+        if (data.ok) {
+            viajeEnCurso = true;
+            idViajeActivo = id;
+            cargarViajes();
+        } else {
+            alert(data.error || "Error");
+        }
+    });
+}
+
+// 🚀 INIT
+document.addEventListener("DOMContentLoaded", function () {
+    initMap();
+    cargarViajes();
+    setInterval(cargarViajes, 15000);
+});
+
+</script>
+
 {% endblock %}
