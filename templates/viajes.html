@@ -59,6 +59,25 @@
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     
+    // DEFINICIÓN DE ICONOS (VERDE PARA ORIGEN, ROJO PARA DESTINO)
+    const iconoVerde = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const iconoRojo = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
     // 1. MAPA PARA EL VIAJE ACTIVO
     {% if viaje_activo %}
     (function() {
@@ -70,8 +89,8 @@ document.addEventListener("DOMContentLoaded", function() {
         if (latO && lngO && latD && lngD) {
             const map = L.map('map_activo').setView([latO, lngO], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            L.marker([latO, lngO]).addTo(map).bindPopup("Recoger");
-            L.marker([latD, lngD]).addTo(map).bindPopup("Destino");
+            L.marker([latO, lngO], { icon: iconoVerde }).addTo(map).bindPopup("🟢 Recoger aquí");
+            L.marker([latD, lngD], { icon: iconoRojo }).addTo(map).bindPopup("🔴 Destino");
             
             fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
             .then(res => res.json())
@@ -86,7 +105,7 @@ document.addEventListener("DOMContentLoaded", function() {
     })();
     {% endif %}
 
-    // 2. MAPAS PARA LA LISTA DE VIAJES DISPONIBLES
+    // 2. MAPAS PARA LA LISTA DE VIAJES DISPONIBLES (CORREGIDO ICONOS)
     {% if not viaje_activo and viajes %}
     {% for viaje in viajes %}
     (function() {
@@ -100,8 +119,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const map = L.map(mapId, { scrollWheelZoom: false }).setView([latO, lngO], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        L.marker([latO, lngO]).addTo(map);
-        L.marker([latD, lngD]).addTo(map);
+
+        // Marcador Origen VERDE
+        L.marker([latO, lngO], { icon: iconoVerde }).addTo(map).bindPopup("🟢 Recoger aquí");
+        // Marcador Destino ROJO
+        L.marker([latD, lngD], { icon: iconoRojo }).addTo(map).bindPopup("🔴 Destino");
 
         fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
         .then(res => res.json())
@@ -109,13 +131,14 @@ document.addEventListener("DOMContentLoaded", function() {
             if (!data.routes || data.routes.length === 0) return;
             const coords = data.routes[0].geometry.coordinates;
             const ruta = coords.map(c => [c[1], c[0]]);
-            const polyline = L.polyline(ruta, {color: 'blue', weight: 4}).addTo(map);
+            const polyline = L.polyline(ruta, {color: '#27ae60', weight: 5}).addTo(map);
             map.fitBounds(polyline.getBounds());
         }).catch(()=>{});
     })();
     {% endfor %}
     {% endif %}
 });
+
 function aceptarViaje(viajeId) {
     fetch(`/aceptar_viaje/${viajeId}`, {
         method: "POST"
@@ -138,9 +161,7 @@ function aceptarViaje(viajeId) {
     });
 }
 
-// 3. FUNCIÓN PARA ACEPTAR VIAJE Y MOSTRAR ALERTA SI YA NO ESTÁ
-
-// 4. LÓGICA DE ALERTA DE NUEVOS VIAJES
+// LÓGICA DE ALERTA DE NUEVOS VIAJES
 let alertaActiva = false;
 
 function iniciarAlerta() {
