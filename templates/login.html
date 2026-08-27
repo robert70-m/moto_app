@@ -5,7 +5,15 @@
 <div class="card" style="text-align: center;">
     <h2>Iniciar sesión 🏍️</h2>
 
-    <form method="POST" autocomplete="off">
+    {% if error %}
+        <div id="error-box" style="margin-top: 15px; margin-bottom: 20px; padding: 12px; background: #fdeaea; border-radius: 8px; border: 1px solid #f5c6cb;">
+            <p style="color: #e74c3c; margin: 0; font-size: 14px; font-weight: bold;">
+                <i class="fas fa-exclamation-circle"></i> {{ error }}
+            </p>
+        </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login') }}" autocomplete="off">
         <input 
             type="tel"
             name="telefono"
@@ -13,7 +21,7 @@
             inputmode="numeric"
             pattern="[0-9]+"
             required
-            style="margin-bottom: 10px;"
+            style="margin-bottom: 10px; width: 100%; box-sizing: border-box;"
         >
 
         <input 
@@ -22,9 +30,10 @@
             placeholder="Tu Contraseña"
             autocomplete="current-password"
             required
+            style="width: 100%; box-sizing: border-box;"
         >
 
-        <button type="submit" style="margin-top: 25px;">
+        <button type="submit" style="margin-top: 25px; width: 100%;">
             Entrar a Moto App
         </button>
     </form>
@@ -42,30 +51,20 @@
 
     <div style="margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
         <p style="font-size: 14px; color: #2c3e50; margin-bottom: 10px; font-weight: bold;">
-            ¿Te gustaria hecer mandados en tu bici ? Da clic aquí:
+            ¿Te gustaría hacer mandados en tu bici o moto? Da clic aquí:
         </p>
 
-        <a href="https://wa.me/5219513928223?text={{ 
-            ('Hola, quiero informes para trabajar como conductor en Moto App') | urlencode 
-        }}" target="_blank">
-            <button type="button">Contactar por WhatsApp</button>
+        <a href="https://wa.me/5219513928223?text={{ 'Hola, quiero informes para trabajar como conductor en Moto App'|urlencode }}" target="_blank">
+            <button type="button" style="width: 100%;">Contactar por WhatsApp</button>
         </a>
     </div>
-
-    {% if error %}
-        <div id="error-box" style="margin-top: 15px; padding: 12px; background: #fdeaea; border-radius: 8px; border: 1px solid #f5c6cb;">
-            <p style="color: #e74c3c; margin: 0; font-size: 14px; font-weight: bold;">
-                <i class="fas fa-exclamation-circle"></i> {{ error }}
-            </p>
-        </div>
-    {% endif %}
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     {% if error %}
         if (typeof mostrarToast === "function") {
-            mostrarToast("{{ error|escape }}", "error");
+            mostrarToast("{{ error | js_escaped if js_escaped is defined else error }}", "error");
         }
     {% endif %}
 });
