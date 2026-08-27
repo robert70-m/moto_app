@@ -16,7 +16,7 @@
     <div style="overflow-x: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
 
-            <!-- BOTÓN QUE APERTA EL MODAL (MODIFICADO) -->
+            <!-- BOTÓN QUE ABRE EL MODAL -->
             <button type="button" onclick="abrirModalConductor()" class="btn-pago" style="background: #27ae60; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;">
                 <i class="fas fa-plus"></i> Registrar Nuevo Conductor
             </button>
@@ -47,9 +47,9 @@
                 <tr style="background: var(--primary); color: white;">
                     <th style="padding: 12px;">Nombre</th>
                     <th>Teléfono</th>
-                    <th>password</th>
+                    <th>Contraseña</th>
                     <th>N° Unidad</th>
-                    <th>color Vehiculo</th>
+                    <th>Color Vehículo</th>
                     <th>Estado</th>
                     <th>Último Pago</th>
                     <th>Suscripción</th>
@@ -67,7 +67,7 @@
                     <td>{{ c.numero_unidad or '-' }}</td>
                     <td>{{ c.color_vehiculo or '-' }}</td>
                     <td>
-                        {% if c.activo == 1 or c.activo == "1" %}
+                        {% if c.activo|int == 1 %}
                             <span class="activo"><i class="fas fa-check"></i> Activo</span>
                         {% else %}
                             <span class="bloqueado"><i class="fas fa-ban"></i> Bloqueado</span>
@@ -91,18 +91,18 @@
                     </td>
                     <td style="display: flex; gap: 5px; justify-content: center;">
                         <!-- Bloquear / Activar Conductor -->
-                        <a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Cambiar estado?');">
-                            <i class="fas {% if c.activo == 1 or c.activo == '1' %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                        <a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Cambiar estado?');" title="Cambiar Estado">
+                            <i class="fas {% if c.activo|int == 1 %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
                         </a>
                         
                         <!-- Pago General -->
-                        <a class="btn-pago" href="{{ url_for('pagar_conductor', id=c.id) }}" onclick="return confirm('¿Confirmar pago?');">
+                        <a class="btn-pago" href="{{ url_for('pagar_conductor', id=c.id) }}" onclick="return confirm('¿Confirmar pago?');" title="Registrar Pago">
                             <i class="fas fa-dollar-sign"></i>
                         </a>
 
                         <!-- Botón de reinicio individual -->
                         <form action="{{ url_for('procesar_reinicio_conductor', id_conductor=c.id) }}" method="POST" style="display:inline; margin:0; padding:0;" onsubmit="return confirm('¿Confirmar cobro de comisión? El contador de este conductor volverá a cero y se renovarán sus 7 días.');">
-                            <button type="submit" class="btn-pago" style="background: #e67e22; border: none; cursor: pointer; display: inline-block; padding: 8px 12px;">
+                            <button type="submit" class="btn-pago" style="background: #e67e22; border: none; cursor: pointer; display: inline-block; padding: 8px 12px;" title="Reiniciar Viajes y Renovar">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
                         </form>
@@ -140,7 +140,7 @@
     </form>
 </div>
 
-<!-- 🔴 MODAL FLOTANTE PARA REGISTRO DE CONDUCTOR -->
+<!-- MODAL FLOTANTE PARA REGISTRO DE CONDUCTOR -->
 <div id="modalConductor" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
     <div style="background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); position: relative;">
         
