@@ -26,13 +26,20 @@ def requiere_conductor_activo(f):
 
 
 def conductor_activo(user_id):
+    if not user_id:
+        return False
     conn = get_db()
     user = conn.execute(
         "SELECT activo FROM usuarios WHERE id=?",
         (user_id,)
     ).fetchone()
     conn.close()
-    return True if (user and user["activo"] == 1) else False
+    if not user:
+        return False
+    try:
+        return int(user["activo"]) == 1
+    except (ValueError, TypeError):
+        return False
 
 
 def es_admin():
@@ -112,9 +119,15 @@ crear_tablas()
 def login():
     if request.method == "GET" and "user_id" in session:
         tipo_sesion = session.get("tipo", "").lower().strip()
+        user_id = session.get("user_id")
+        
         if tipo_sesion == "admin":
             return redirect(url_for("admin"))
         elif tipo_sesion == "conductor":
+            # REVISIÓN QUIRÚRGICA: Si está inactivo, destruir sesión y mandar a login
+            if not conductor_activo(user_id):
+                session.clear()
+                return render_template("login.html", error="Tu cuenta está bloqueada o inactiva por falta de pago.")
             return redirect(url_for("conductor"))
         else:
             return redirect(url_for("cliente"))
@@ -132,9 +145,17 @@ def login():
         ).fetchone()
 
         if user:
-            if user["activo"] == 0:
+            tipo_usuario = str(user["tipo"]).lower().strip()
+
+            # REVISIÓN QUIRÚRGICA: Tratar int/str de forma segura para bloqueos
+            try:
+                es_activo = int(user["activo"]) == 1
+            except (ValueError, TypeError):
+                es_activo = False
+
+            if not es_activo and tipo_usuario == "conductor":
                 conn.close()
-                error = "Usuario bloqueado o inactivo"
+                error = "Tu cuenta está bloqueada o inactiva por falta de pago."
                 return render_template("login.html", error=error)
 
             password_db = user["password"]
@@ -163,8 +184,6 @@ def login():
             session["user_id"] = user["id"]
             session["nombre"] = user["nombre"]
             session["telefono"] = user["telefono"]
-
-            tipo_usuario = str(user["tipo"]).lower().strip()
             session["tipo"] = tipo_usuario
 
             conn.close()
@@ -374,6 +393,11 @@ def aceptar_viaje(id):
             return jsonify({"status": "error", "message": "No autorizado"}), 401
 
         user_id = session.get("user_id")
+
+        # BLOQUEO QUIRÚRGICO: Verificar si el conductor está activo antes de permitir tomar viajes
+        if not conductor_activo(user_id):
+            return jsonify({"status": "error", "message": "Tu cuenta está inactiva. Contacta al administrador."}), 403
+
         conn = get_db()
 
         # Validar si el conductor ya tiene un viaje en proceso
