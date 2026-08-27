@@ -131,10 +131,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 // 3. MOVER LA MOTO EN EL MAPA
                 if (d.lat && d.lng) {
-                    if (marcadorMoto) {
-                        marcador>Moto.setLatLng([d.lat, d.lng]);
+                    if (marcador) {
+                        marcador.setLatLng([d.lat, d.lng]);
                     } else {
-                        marcadorMOTO = L.marker([d.lat, d.lng], {icon: iconoMoto}).addTo(map);
+                        marcador = L.marker([d.lat, d.lng], {icon: iconoMoto}).addTo(map);
                     }
                 }
 
