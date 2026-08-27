@@ -226,9 +226,13 @@ def registro_conductor():
 
         conn.commit()
         conn.close()
-        return redirect(url_for("login"))
+        
+        # 🟢 CAMBIO AQUÍ: Redirigir de vuelta al panel de administración (o lista de conductores)
+        # Cambia 'admin' por el nombre exacto de la función que renderiza tu tabla de conductores
+        return redirect(url_for("admin"))
 
-    return render_template("registro_conductor.html")
+    # Si por alguna razón entran vía GET, redirigir al panel
+    return redirect(url_for("admin"))
 @app.route("/conductor")
 def conductor():
     if "user_id" not in session:

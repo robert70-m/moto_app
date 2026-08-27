@@ -16,9 +16,10 @@
     <div style="overflow-x: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
 
-            <a href="{{ url_for('registro_conductor') }}" class="btn-pago" style="background: #27ae60; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            <!-- BOTÓN QUE APERTA EL MODAL (MODIFICADO) -->
+            <button type="button" onclick="abrirModalConductor()" class="btn-pago" style="background: #27ae60; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;">
                 <i class="fas fa-plus"></i> Registrar Nuevo Conductor
-            </a>
+            </button>
 
             <div style="display: flex; gap: 10px;">
                 <form method="GET" action="{{ url_for('reset_viajes') }}" onsubmit="return confirm('⚠️ ¿Borrar TODOS los viajes?');">
@@ -117,23 +118,19 @@
     {% endif %}
 </div>
 
-<!-- NUEVA SECCIÓN: CAMBIAR CONTRASEÑA (Separada y bien estilizada al final) -->
-<!-- SECCIÓN: CAMBIAR CONTRASEÑA (Sincronizada con tu app.py) -->
+<!-- SECCIÓN: CAMBIAR CONTRASEÑA -->
 <div class="card" style="max-width: 1000px; width: 100%; margin: 30px auto auto auto; padding: 20px;">
     <h3 style="margin-top: 0;"><i class="fas fa-key"></i> Cambiar Contraseña de Administrador</h3>
     <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
     
-    <!-- Apunta a cambiar_password que es tu función en Flask -->
     <form action="{{ url_for('cambiar_password') }}" method="POST" style="max-width: 500px;">
         <div style="margin-bottom: 15px;">
             <label for="nueva_password" style="display: block; margin-bottom: 5px; font-weight: bold;">Nueva Contraseña</label>
-            <!-- El name debe ser nueva_password -->
             <input type="password" id="nueva_password" name="nueva_password" required 
                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
         </div>
         <div style="margin-bottom: 20px;">
             <label for="confirmar_password" style="display: block; margin-bottom: 5px; font-weight: bold;">Confirmar Nueva Contraseña</label>
-            <!-- El name debe ser confirmar_password -->
             <input type="password" id="confirmar_password" name="confirmar_password" required 
                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
         </div>
@@ -141,6 +138,54 @@
             <i class="fas fa-save"></i> Guardar Nueva Contraseña
         </button>
     </form>
+</div>
+
+<!-- 🔴 MODAL FLOTANTE PARA REGISTRO DE CONDUCTOR -->
+<div id="modalConductor" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); position: relative;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+            <h3 style="margin: 0; color: #2c3e50;"><i class="fas fa-user-plus"></i> Registrar Nuevo Conductor</h3>
+            <button type="button" onclick="cerrarModalConductor()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #7f8c8d;">&times;</button>
+        </div>
+
+        <form action="{{ url_for('registro_conductor') }}" method="POST">
+            <div style="margin-bottom: 12px; text-align: left;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Nombre Completo:</label>
+                <input type="text" name="nombre" required style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 12px; text-align: left;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Teléfono:</label>
+                <input type="tel" name="telefono" required style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 12px; text-align: left;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Contraseña:</label>
+                <input type="password" name="password" required style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box;">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                <div style="flex: 1; text-align: left;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">N° Unidad:</label>
+                    <input type="text" name="numero_unidad" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box;">
+                </div>
+                <div style="flex: 1; text-align: left;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Color Vehículo:</label>
+                    <input type="text" name="color_vehiculo" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box;">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="cerrarModalConductor()" style="flex: 1; background: #95a5a6; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                    Cancelar
+                </button>
+                <button type="submit" style="flex: 1; background: #27ae60; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                    Guardar Conductor
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -151,6 +196,14 @@ function filtrarTabla() {
         const text = row.children[0].textContent + row.children[1].textContent;
         row.style.display = text.toLowerCase().includes(filter) ? "" : "none";
     });
+}
+
+function abrirModalConductor() {
+    document.getElementById('modalConductor').style.display = 'flex';
+}
+
+function cerrarModalConductor() {
+    document.getElementById('modalConductor').style.display = 'none';
 }
 </script>
 

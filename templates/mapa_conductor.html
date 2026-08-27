@@ -46,6 +46,19 @@
         background: transparent !important;
         filter: none !important;
     }
+
+    /* ✅ TEXTO FIJO EN MAPA (IMPORTANTE) */
+    .leaflet-tooltip.label-ruta {
+        background: white !important;
+        border: 2px solid #333 !important;
+        border-radius: 6px !important;
+        padding: 3px 8px !important;
+        font-weight: bold !important;
+        font-size: 13px !important;
+        color: #000 !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+        opacity: 1 !important;
+    }
 </style>
 
 <script>
@@ -54,8 +67,9 @@ let map;
 let rutasActivas = [];
 let viajeEnCurso = false;
 let idViajeActivo = null;
+let markersLayer = L.layerGroup();
 
-// 🔵 ICONOS FIJOS
+// 🔵 ICONOS
 const iconVerde = L.icon({
     iconUrl: "{{ url_for('static', filename='img/marker-icon-2x-green.png') }}",
     iconSize: [30, 50],
@@ -70,7 +84,7 @@ const iconRojo = L.icon({
     popupAnchor: [1, -34]
 });
 
-// 🗺️ INIT MAP
+// 🗺️ MAPA
 function initMap() {
     map = L.map('map').setView([16.75, -96.67], 13);
 
@@ -78,34 +92,9 @@ function initMap() {
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-            map.setView([pos.coords.latitude, pos.coords.longitude], 14);
-        });
-    }
+    markersLayer.addTo(map);
 
     setTimeout(() => map.invalidateSize(), 500);
-}
-
-// 🟡 POPUP CENTRALIZADO
-function getPopup(v, tipo) {
-
-    if (tipo === "origen") {
-
-        if (v.estado === "aceptado" && v.id === idViajeActivo) {
-            return `<b>Viaje en curso 🏍️</b><br>
-                    <a href="/finalizar_viaje/${v.id}" class="btn-aceptar-mapa" style="background:#e74c3c;">
-                        FINALIZAR VIAJE 🏁
-                    </a>`;
-        }
-
-        return `<b>Punto de Recogida 🟢</b><br>
-                <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa">
-                    ACEPTAR VIAJE ✅
-                </button>`;
-    }
-
-    return `<b>Destino Final 🔴</b>`;
 }
 
 // 🔄 CARGAR VIAJES
@@ -115,7 +104,8 @@ function cargarViajes() {
     .then(res => res.json())
     .then(data => {
 
-        // limpiar rutas anteriores
+        markersLayer.clearLayers();
+
         rutasActivas.forEach(r => map.removeControl(r));
         rutasActivas = [];
 
@@ -128,60 +118,77 @@ function cargarViajes() {
             if (v.estado === "pendiente" ||
                 (v.estado === "aceptado" && v.id === idViajeActivo)) {
 
-                // 🛣️ SOLO LINEA (sin markers del plugin)
                 let ruta = L.Routing.control({
-
                     waypoints: [
                         L.latLng(v.lat, v.lng),
                         L.latLng(v.lat_destino, v.lng_destino)
                     ],
-
-                    createMarker: function() {
-                        return null; // 🚨 evitamos conflicto de iconos
-                    },
-
-                    routeWhileDragging: false,
+                    createMarker: () => null,
                     addWaypoints: false,
                     draggableWaypoints: false,
-                    fitSelectedRoutes: false,
                     show: false
-                });
+                }).addTo(map);
 
-                ruta.addTo(map);
                 rutasActivas.push(ruta);
 
                 // 🟢 ORIGEN
-                L.marker([v.lat, v.lng], { icon: iconVerde })
-                    .addTo(map)
-                    .bindPopup(getPopup(v, "origen"));
+                markersLayer.addLayer(
+    L.marker([v.lat, v.lng], { icon: iconVerde })
+        .bindPopup(`
+            <b>📍 ORIGEN (RECOGIDA)</b><br>
+            <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa">
+                ACEPTAR
+            </button>
+        `)
+        .bindTooltip(`
+            <div style="
+                background:white;
+                padding:4px 8px;
+                border:2px solid #27ae60;
+                border-radius:6px;
+                font-weight:bold;
+                color:#27ae60;
+                font-size:12px;
+                white-space:nowrap;
+            ">
+                📍 ORIGEN
+            </div>
+        `, {
+            permanent: true,
+            direction: "top",
+            opacity: 1,
+            interactive: false,
+            className: ""
+        })
+);
 
                 // 🔴 DESTINO
-                L.marker([v.lat_destino, v.lng_destino], { icon: iconRojo })
-                    .addTo(map)
-                    .bindPopup(getPopup(v, "destino"));
-            }
-        });
-    });
-}
+                markersLayer.addLayer(
+    L.marker([v.lat_destino, v.lng_destino], { icon: iconRojo })
+        .bindPopup(`<b>🏁 DESTINO FINAL</b>`)
+        .bindTooltip(`
+            <div style="
+                background:white;
+                padding:4px 8px;
+                border:2px solid #e74c3c;
+                border-radius:6px;
+                font-weight:bold;
+                color:#e74c3c;
+                font-size:12px;
+                white-space:nowrap;
+            ">
+                🏁 DESTINO
+            </div>
+        `, {
+            permanent: true,
+            direction: "top",
+            opacity: 1,
+            interactive: false,
+            className: ""
+        })
+);
 
-// ✅ ACEPTAR VIAJE
-function aceptarViaje(id) {
-
-    fetch(`/aceptar_viaje_ajax/${id}`, { method: "POST" })
-    .then(r => r.json())
-    .then(data => {
-
-        if (data.ok) {
-            viajeEnCurso = true;
-            idViajeActivo = id;
-            cargarViajes();
-        } else {
-            alert(data.error || "No se pudo aceptar");
-        }
-    });
-}
-
-// 🚀 INICIO
+// 🚀 INIT
 document.addEventListener("DOMContentLoaded", function () {
     initMap();
     cargarViajes();
