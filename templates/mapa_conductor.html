@@ -47,7 +47,7 @@
         filter: none !important;
     }
 
-    /* ✅ TEXTO FIJO EN MAPA (IMPORTANTE) */
+    /* ✅ TEXTO FIJO EN MAPA */
     .leaflet-tooltip.label-ruta {
         background: white !important;
         border: 2px solid #333 !important;
@@ -62,7 +62,6 @@
 </style>
 
 <script>
-
 let map;
 let rutasActivas = [];
 let viajeEnCurso = false;
@@ -99,24 +98,21 @@ function initMap() {
 
 // 🔄 CARGAR VIAJES
 function cargarViajes() {
-
     fetch("/api_viajes")
     .then(res => res.json())
     .then(data => {
-
         markersLayer.clearLayers();
 
         rutasActivas.forEach(r => map.removeControl(r));
         rutasActivas = [];
 
+        if (!data.viajes) return;
+
         data.viajes.forEach(v => {
-
             if (!v.lat || !v.lng || !v.lat_destino || !v.lng_destino) return;
-
             if (viajeEnCurso && v.id !== idViajeActivo) return;
 
-            if (v.estado === "pendiente" ||
-                (v.estado === "aceptado" && v.id === idViajeActivo)) {
+            if (v.estado === "pendiente" || (v.estado === "aceptado" && v.id === idViajeActivo)) {
 
                 let ruta = L.Routing.control({
                     waypoints: [
@@ -133,60 +129,45 @@ function cargarViajes() {
 
                 // 🟢 ORIGEN
                 markersLayer.addLayer(
-    L.marker([v.lat, v.lng], { icon: iconVerde })
-        .bindPopup(`
-            <b>📍 ORIGEN (RECOGIDA)</b><br>
-            <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa">
-                ACEPTAR
-            </button>
-        `)
-        .bindTooltip(`
-            <div style="
-                background:white;
-                padding:4px 8px;
-                border:2px solid #27ae60;
-                border-radius:6px;
-                font-weight:bold;
-                color:#27ae60;
-                font-size:12px;
-                white-space:nowrap;
-            ">
-                📍 ORIGEN
-            </div>
-        `, {
-            permanent: true,
-            direction: "top",
-            opacity: 1,
-            interactive: false,
-            className: ""
-        })
-);
+                    L.marker([v.lat, v.lng], { icon: iconVerde })
+                        .bindPopup(`
+                            <b>📍 ORIGEN (RECOGIDA)</b><br>
+                            <button onclick="aceptarViaje(${v.id})" class="btn-aceptar-mapa">
+                                ACEPTAR
+                            </button>
+                        `)
+                        .bindTooltip(`
+                            <div style="background:white; padding:4px 8px; border:2px solid #27ae60; border-radius:6px; font-weight:bold; color:#27ae60; font-size:12px; white-space:nowrap;">
+                                📍 ORIGEN
+                            </div>
+                        `, {
+                            permanent: true,
+                            direction: "top",
+                            opacity: 1,
+                            interactive: false
+                        })
+                );
 
                 // 🔴 DESTINO
                 markersLayer.addLayer(
-    L.marker([v.lat_destino, v.lng_destino], { icon: iconRojo })
-        .bindPopup(`<b>🏁 DESTINO FINAL</b>`)
-        .bindTooltip(`
-            <div style="
-                background:white;
-                padding:4px 8px;
-                border:2px solid #e74c3c;
-                border-radius:6px;
-                font-weight:bold;
-                color:#e74c3c;
-                font-size:12px;
-                white-space:nowrap;
-            ">
-                🏁 DESTINO
-            </div>
-        `, {
-            permanent: true,
-            direction: "top",
-            opacity: 1,
-            interactive: false,
-            className: ""
-        })
-);
+                    L.marker([v.lat_destino, v.lng_destino], { icon: iconRojo })
+                        .bindPopup(`<b>🏁 DESTINO FINAL</b>`)
+                        .bindTooltip(`
+                            <div style="background:white; padding:4px 8px; border:2px solid #e74c3c; border-radius:6px; font-weight:bold; color:#e74c3c; font-size:12px; white-space:nowrap;">
+                                🏁 DESTINO
+                            </div>
+                        `, {
+                            permanent: true,
+                            direction: "top",
+                            opacity: 1,
+                            interactive: false
+                        })
+                );
+            }
+        });
+    })
+    .catch(err => console.error("Error al cargar viajes:", err));
+}
 
 // 🚀 INIT
 document.addEventListener("DOMContentLoaded", function () {
@@ -194,7 +175,6 @@ document.addEventListener("DOMContentLoaded", function () {
     cargarViajes();
     setInterval(cargarViajes, 15000);
 });
-
 </script>
 
 {% endblock %}
