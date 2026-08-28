@@ -21,6 +21,7 @@
                 <i class="fas fa-plus"></i> Registrar Nuevo Conductor
             </button>
 
+            <!-- BOTONES DE RESET -->
             <div style="display: flex; gap: 10px;">
                 <form method="GET" action="{{ url_for('reset_viajes') }}" onsubmit="return confirm('⚠️ ¿Borrar TODOS los viajes?');">
                     <button type="submit" class="btn-bloquear" style="background:#e67e22; border:none; cursor:pointer;">
@@ -89,23 +90,26 @@
                     <td>
                         <span style="font-weight:bold; color:#27ae60;">${{ c.comision }}</span>
                     </td>
-                    <td style="display: flex; gap: 5px; justify-content: center;">
-                        <!-- Bloquear / Activar Conductor -->
-                        <a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Cambiar estado?');" title="Cambiar Estado">
-                            <i class="fas {% if c.activo|int == 1 %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
-                        </a>
-                        
-                        <!-- Pago General -->
-                        <a class="btn-pago" href="{{ url_for('pagar_conductor', id=c.id) }}" onclick="return confirm('¿Confirmar pago?');" title="Registrar Pago">
-                            <i class="fas fa-dollar-sign"></i>
-                        </a>
+                    <td style="text-align: center; white-space: nowrap;">
+                        <!-- Contenedor alineado para los 3 botones de accion -->
+                        <div style="display: inline-flex; gap: 5px; align-items: center; justify-content: center;">
+                            <!-- 1. Bloquear / Activar Conductor -->
+                            <a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Cambiar estado?');" title="Cambiar Estado">
+                                <i class="fas {% if c.activo|int == 1 %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                            </a>
+                            
+                            <!-- 2. Pago General -->
+                            <a class="btn-pago" href="{{ url_for('pagar_conductor', id=c.id) }}" onclick="return confirm('¿Confirmar pago?');" title="Registrar Pago">
+                                <i class="fas fa-dollar-sign"></i>
+                            </a>
 
-                        <!-- Botón de reinicio individual -->
-                        <form action="{{ url_for('procesar_reinicio_conductor', id_conductor=c.id) }}" method="POST" style="display:inline; margin:0; padding:0;" onsubmit="return confirm('¿Confirmar cobro de comisión? El contador de este conductor volverá a cero y se renovarán sus 7 días.');">
-                            <button type="submit" class="btn-pago" style="background: #e67e22; border: none; cursor: pointer; display: inline-block; padding: 8px 12px;" title="Reiniciar Viajes y Renovar">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
-                        </form>
+                            <!-- 3. Botón de reinicio individual -->
+                            <form action="{{ url_for('procesar_reinicio_conductor', id_conductor=c.id) }}" method="POST" style="display:inline; margin:0; padding:0;" onsubmit="return confirm('¿Confirmar cobro de comisión? El contador de este conductor volverá a cero y se renovarán sus 7 días.');">
+                                <button type="submit" class="btn-pago" style="background: #e67e22; border: none; cursor: pointer; padding: 8px 12px;" title="Reiniciar Viajes y Renovar">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -210,7 +214,16 @@ function cerrarModalConductor() {
 <style>
 table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
 th, td { text-align: center; border-bottom: 1px solid #eee; padding: 10px; }
-.btn-activar, .btn-bloquear, .btn-pago { padding: 8px 12px; border-radius: 5px; color: white; font-size: 12px; text-decoration: none; }
+.btn-activar, .btn-bloquear, .btn-pago { 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 8px 12px; 
+    border-radius: 5px; 
+    color: white; 
+    font-size: 12px; 
+    text-decoration: none; 
+}
 .btn-activar { background: var(--accent); }
 .btn-bloquear { background: var(--danger); }
 .btn-pago { background: #3498db; }
